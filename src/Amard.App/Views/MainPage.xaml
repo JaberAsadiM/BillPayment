@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Amard.App.Views.MainPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    FlowDirection="RightToLeft"
+    BackgroundColor="#F5F6FA">
+
+    <ScrollView>
+        <StackLayout Padding="24" Spacing="16">
+
+            <Label Text="پرداخت قبض" FontSize="26" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#1A237E" />
+
+            <!-- نوع جستجو -->
+            <Picker x:Name="SearchTypePicker"
+                    Title="نوع جستجو"
+                    SelectedIndexChanged="OnSearchTypeChanged" />
+
+            <!-- مقدار جستجو -->
+            <Entry x:Name="SearchValueEntry"
+                   Placeholder="مقدار مورد جستجو را وارد کنید"
+                   Text="{Binding SearchValue, Mode=TwoWay}" />
+
+            <!-- دکمه جستجو -->
+            <Button Text="جستجو"
+                    Command="{Binding SearchCommand}"
+                    BackgroundColor="#1A237E"
+                    TextColor="White"
+                    CornerRadius="10" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" HorizontalOptions="Center" />
+
+            <!-- اطلاعات قبض -->
+            <Frame IsVisible="{Binding HasBill}" CornerRadius="12" BackgroundColor="White" Padding="16">
+                <StackLayout Spacing="8">
+                    <Label Text="اطلاعات قبض" FontAttributes="Bold" FontSize="18" />
+                    <Label Text="{Binding CurrentBill.OwnerName, StringFormat='صاحب قبض: {0}'}" />
+                    <Label Text="{Binding CurrentBill.BillId, StringFormat='شناسه قبض: {0}'}" />
+                    <Label Text="{Binding CurrentBill.PayId, StringFormat='شناسه پرداخت: {0}'}" />
+                    <Label Text="{Binding AmountText, StringFormat='مبلغ قبض: {0}'}"
+                           FontSize="20" FontAttributes="Bold" TextColor="#B71C1C" />
+
+                    <!-- دکمه پرداخت -->
+                    <Button Text="پرداخت با دستگاه POS"
+                            Command="{Binding PayCommand}"
+                            BackgroundColor="#2E7D32"
+                            TextColor="White"
+                            CornerRadius="10"
+                            Margin="0,8,0,0" />
+                </StackLayout>
+            </Frame>
+
+            <!-- وضعیت -->
+            <Label Text="{Binding StatusMessage}" FontSize="16" TextColor="#37474F" HorizontalOptions="Center" />
+
+        </StackLayout>
+    </ScrollView>
+</ContentPage>
