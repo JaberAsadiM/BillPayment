@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- تم برنامه:
+         رنگ متن آیتم‌های منوی Toolbar (مثل «⚙ تنظیمات») را سرمه‌ای می‌کند.
+         این رنگ از تم خوانده می‌شود، پس حتی وقتی Toolbar هنگام ناوبری بین صفحات
+         بازسازی می‌شود (مثلاً برگشت از صفحه تنظیمات)، سفید نمی‌ماند. -->
+    <style name="Amard.MainTheme" parent="Maui.SplashTheme">
+        <item name="actionMenuTextColor">#1A237E</item>
+        <item name="android:actionMenuTextColor">#1A237E</item>
+    </style>
+</resources>

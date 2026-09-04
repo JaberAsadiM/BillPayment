@@ -24,4 +24,18 @@ public partial class MainPage : ContentPage
 
         _vm.SearchType = (BillSearchType)SearchTypePicker.SelectedIndex;
     }
+
+    /// <summary>باز کردن صفحه‌ی تنظیمات برنامه</summary>
+    private async void OnSettingsClicked(object? sender, EventArgs e)
+    {
+        try
+        {
+            await Navigation.PushAsync(new SettingsPage());
+        }
+        catch (Exception ex)
+        {
+            Android.Util.Log.Error("AmardCrash", $"Open settings FAILED: {ex}");
+            await DisplayAlert("خطا", ex.Message, "باشه");
+        }
+    }
 }

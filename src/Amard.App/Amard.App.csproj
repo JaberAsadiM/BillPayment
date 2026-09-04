@@ -15,13 +15,6 @@
     <!-- Single-project MAUI (Android only) -->
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
-
-    <!--
-      رفع مشکل صفحه سفید هنگام اجرا:
-      اسمبلی‌های .NET باید داخل خود APK قرار بگیرند تا نصب مستقلِ APK هم کار کند.
-      (حالت پیش‌فرض Debug از Fast Deployment استفاده می‌کند که بدون پوش فایل‌ها از VS
-      باعث خطای "failed to load bundled assembly Amard.App.dll" و صفحه سفید می‌شود.)
-    -->
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
 
     <!-- پوشش معماری‌ها: شبیه‌ساز (x86_64) و دستگاه واقعی / POS (arm64 و arm ۳۲ بیتی) -->

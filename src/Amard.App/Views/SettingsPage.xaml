@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage
+    x:Class="Amard.App.Views.SettingsPage"
+    xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    Title="تنظیمات"
+    FlowDirection="RightToLeft"
+    BackgroundColor="{StaticResource PageBackground}">
+
+    <ScrollView>
+        <StackLayout Padding="20,16" Spacing="16">
+
+            <!-- هدر با پس‌زمینه گرادیانی -->
+            <Border Style="{StaticResource Card}" StrokeThickness="0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="{StaticResource Primary}" Offset="0.0" />
+                        <GradientStop Color="{StaticResource PrimaryLight}" Offset="1.0" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <StackLayout Spacing="4" Padding="0,6">
+                    <Label Text="⚙️ تنظیمات برنامه"
+                           FontSize="24" FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center" />
+                    <Label Text="پیکربندی سرور API و سرویس POS"
+                           FontSize="13"
+                           TextColor="#C5CAE9"
+                           HorizontalOptions="Center" />
+                </StackLayout>
+            </Border>
+
+            <!-- آدرس فعلی سرور -->
+            <Border BackgroundColor="{StaticResource PrimarySoft}"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 16"
+                    Padding="16">
+                <StackLayout Spacing="4">
+                    <Label Text="آدرس فعلی سرور API (خودکار):"
+                           FontAttributes="Bold" FontSize="14"
+                           TextColor="{StaticResource Primary}" />
+                    <Label Text="{Binding CurrentApiUrl}"
+                           FontSize="13"
+                           TextColor="{StaticResource TextPrimary}" />
+                </StackLayout>
+            </Border>
+
+            <!-- کارت تنظیمات سرور API -->
+            <Border Style="{StaticResource Card}">
+                <StackLayout Spacing="4">
+                    <Label Text="🌐 سرور API" Style="{StaticResource SectionTitle}" />
+
+                    <Label Text="پورت سرور API" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding ApiPort, Mode=TwoWay}"
+                               Keyboard="Numeric"
+                               Placeholder="مثلاً 8008" />
+                    </Border>
+
+                    <Label Text="مسیر پایه سرور API" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding ApiBasePath, Mode=TwoWay}"
+                               Placeholder="مثلاً api/PaymentAvarez/" />
+                    </Border>
+
+                    <Label Text="آدرس سرور برای دستگاه واقعی (IP یا localhost)" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding DeviceApiHost, Mode=TwoWay}"
+                               Keyboard="Url"
+                               Placeholder="مثلاً 192.168.1.5 یا localhost" />
+                    </Border>
+
+                    <Label Text="آدرس سرور برای شبیه‌ساز" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding EmulatorApiHost, Mode=TwoWay}"
+                               Keyboard="Url"
+                               Placeholder="مثلاً 192.168.1.2" />
+                    </Border>
+                </StackLayout>
+            </Border>
+
+            <!-- کارت سرویس POS -->
+            <Border Style="{StaticResource Card}">
+                <StackLayout Spacing="4">
+                    <Label Text="💳 سرویس POS اسان پرداخت" Style="{StaticResource SectionTitle}" />
+
+                    <Label Text="شناسه پکیج سرویس POS" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding PosServicePackage, Mode=TwoWay}"
+                               Placeholder="مثلاً com.persianswitch.smartpos" />
+                    </Border>
+
+                    <Label Text="اکشن سرویس IPosService" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding PosServiceAction, Mode=TwoWay}"
+                               Placeholder="مثلاً com.persianswitch.smartpos.aidl.IPosService" />
+                    </Border>
+
+                    <Label Text="کد تراکنش خرید" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding TransactionCodePurchase, Mode=TwoWay}"
+                               Keyboard="Numeric"
+                               Placeholder="مثلاً 1502" />
+                    </Border>
+
+                    <Label Text="کد تراکنش قبض خدماتی" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding TransactionCodeServiceBill, Mode=TwoWay}"
+                               Keyboard="Numeric"
+                               Placeholder="مثلاً 1503" />
+                    </Border>
+
+                    <Label Text="شناسه host" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding HostId, Mode=TwoWay}"
+                               Keyboard="Numeric"
+                               Placeholder="مثلاً 1" />
+                    </Border>
+
+                    <Label Text="زبان SDK دستگاه" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding Lang, Mode=TwoWay}"
+                               Placeholder="مثلاً fa" />
+                    </Border>
+                </StackLayout>
+            </Border>
+
+            <!-- دکمه‌ها -->
+            <Button Text="💾 ذخیره تنظیمات"
+                    Command="{Binding SaveCommand}"
+                    Style="{StaticResource PrimaryButton}"
+                    Margin="0,4,0,0" />
+
+            <Button Text="بازگردانی مقادیر پیش‌فرض"
+                    Command="{Binding ResetToDefaultsCommand}"
+                    Style="{StaticResource DangerButton}" />
+
+            <!-- وضعیت -->
+            <Label Text="{Binding StatusMessage}"
+                   FontSize="15"
+                   TextColor="{StaticResource Success}"
+                   HorizontalOptions="Center" />
+
+        </StackLayout>
+    </ScrollView>
+</ContentPage>

@@ -30,8 +30,8 @@ public class BillApiService : IBillApiService
     /// </summary>
     public async Task<BillInfo> SearchBillAsync(BillSearchRequest request, CancellationToken ct = default)
     {
-        //var url = $"GetMalekin?codeNosazi={(int)request.SearchType}&value={Uri.EscapeDataString(request.SearchValue)}";
-        var url = $"GetMalekin?codeNosazi={Uri.EscapeDataString(request.SearchValue)}";
+        // آدرس کامل در لحظه از تنظیمات خوانده می‌شود (تغییر تنظیمات بلافاصله اعمال می‌شود)
+        var url = $"{AppConstants.ApiBaseUrl}GetMalekin?codeNosazi={Uri.EscapeDataString(request.SearchValue)}";
 
         using var response = await _httpClient.GetAsync(url, ct);
         response.EnsureSuccessStatusCode();
@@ -67,7 +67,8 @@ public class BillApiService : IBillApiService
         var json = JsonSerializer.Serialize(payload, JsonOptions);
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        using var response = await _httpClient.PostAsync("bill/confirm-payment", content, ct);
+        // آدرس کامل در لحظه از تنظیمات خوانده می‌شود (تغییر تنظیمات بلافاصله اعمال می‌شود)
+        using var response = await _httpClient.PostAsync($"{AppConstants.ApiBaseUrl}bill/confirm-payment", content, ct);
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);

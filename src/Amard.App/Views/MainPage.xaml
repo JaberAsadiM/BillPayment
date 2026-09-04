@@ -4,54 +4,112 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     FlowDirection="RightToLeft"
-    BackgroundColor="#F5F6FA">
+    BackgroundColor="{StaticResource PageBackground}">
+
+    <ContentPage.ToolbarItems>
+        <ToolbarItem Text="⚙ تنظیمات"
+                     Order="Primary"
+                     Priority="0"
+                     Clicked="OnSettingsClicked" />
+    </ContentPage.ToolbarItems>
 
     <ScrollView>
-        <StackLayout Padding="24" Spacing="16">
+        <StackLayout Padding="20,16" Spacing="16">
 
-            <Label Text="پرداخت قبض" FontSize="26" FontAttributes="Bold" HorizontalOptions="Center" TextColor="#1A237E" />
-
-            <!-- نوع جستجو -->
-            <Picker x:Name="SearchTypePicker"
-                    Title="نوع جستجو"
-                    SelectedIndexChanged="OnSearchTypeChanged" />
-
-            <!-- مقدار جستجو -->
-            <Entry x:Name="SearchValueEntry"
-                   Placeholder="مقدار مورد جستجو را وارد کنید"
-                   Text="{Binding SearchValue, Mode=TwoWay}" />
-
-            <!-- دکمه جستجو -->
-            <Button Text="جستجو"
-                    Command="{Binding SearchCommand}"
-                    BackgroundColor="#1A237E"
-                    TextColor="White"
-                    CornerRadius="10" />
-
-            <ActivityIndicator IsRunning="{Binding IsBusy}" IsVisible="{Binding IsBusy}" HorizontalOptions="Center" />
-
-            <!-- اطلاعات قبض -->
-            <Frame IsVisible="{Binding HasBill}" CornerRadius="12" BackgroundColor="White" Padding="16">
-                <StackLayout Spacing="8">
-                    <Label Text="اطلاعات قبض" FontAttributes="Bold" FontSize="18" />
-                    <Label Text="{Binding CurrentBill.OwnerName, StringFormat='صاحب قبض: {0}'}" />
-                    <Label Text="{Binding CurrentBill.BillId, StringFormat='شناسه قبض: {0}'}" />
-                    <Label Text="{Binding CurrentBill.PayId, StringFormat='شناسه پرداخت: {0}'}" />
-                    <Label Text="{Binding AmountText, StringFormat='مبلغ قبض: {0}'}"
-                           FontSize="20" FontAttributes="Bold" TextColor="#B71C1C" />
-
-                    <!-- دکمه پرداخت -->
-                    <Button Text="پرداخت با دستگاه POS"
-                            Command="{Binding PayCommand}"
-                            BackgroundColor="#2E7D32"
-                            TextColor="White"
-                            CornerRadius="10"
-                            Margin="0,8,0,0" />
+            <!-- هدر با پس‌زمینه گرادیانی -->
+            <Border Style="{StaticResource Card}" StrokeThickness="0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="{StaticResource Primary}" Offset="0.0" />
+                        <GradientStop Color="{StaticResource PrimaryLight}" Offset="1.0" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <StackLayout Spacing="4" Padding="0,6">
+                    <Label Text="🧾 پرداخت قبض"
+                           FontSize="24" FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center" />
+                    <Label Text="جستجوی قبض و پرداخت با دستگاه POS"
+                           FontSize="13"
+                           TextColor="#C5CAE9"
+                           HorizontalOptions="Center" />
                 </StackLayout>
-            </Frame>
+            </Border>
+
+            <!-- کارت جستجو -->
+            <Border Style="{StaticResource Card}">
+                <StackLayout Spacing="4">
+                    <Label Text="جستجوی قبض" Style="{StaticResource SectionTitle}" />
+
+                    <Label Text="نوع جستجو" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Picker x:Name="SearchTypePicker"
+                                Title="انتخاب کنید"
+                                SelectedIndexChanged="OnSearchTypeChanged" />
+                    </Border>
+
+                    <Label Text="مقدار جستجو" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry x:Name="SearchValueEntry"
+                               Placeholder="مقدار مورد جستجو را وارد کنید"
+                               Text="{Binding SearchValue, Mode=TwoWay}" />
+                    </Border>
+
+                    <Button Text="🔍 جستجو"
+                            Command="{Binding SearchCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            Margin="0,14,0,0" />
+                </StackLayout>
+            </Border>
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               IsVisible="{Binding IsBusy}"
+                               HorizontalOptions="Center"
+                               Color="{StaticResource Primary}" />
+
+            <!-- کارت اطلاعات قبض -->
+            <Border IsVisible="{Binding HasBill}" Style="{StaticResource Card}">
+                <StackLayout Spacing="6">
+                    <Label Text="اطلاعات قبض" Style="{StaticResource SectionTitle}" />
+
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Padding="0,4">
+                        <Label Grid.Column="0" Text="صاحب قبض:" TextColor="{StaticResource TextSecondary}" />
+                        <Label Grid.Column="1" Text="{Binding CurrentBill.OwnerName}" FontAttributes="Bold" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Grid.Column="0" Text="شناسه قبض:" TextColor="{StaticResource TextSecondary}" />
+                        <Label Grid.Column="1" Text="{Binding CurrentBill.BillId}" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                        <Label Grid.Column="0" Text="شناسه پرداخت:" TextColor="{StaticResource TextSecondary}" />
+                        <Label Grid.Column="1" Text="{Binding CurrentBill.PayId}" />
+                    </Grid>
+
+                    <!-- مبلغ قبض در کادر برجسته -->
+                    <Border BackgroundColor="{StaticResource DangerSoft}"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 12"
+                            Padding="14,10"
+                            Margin="0,8,0,0">
+                        <Label Text="{Binding AmountText, StringFormat='مبلغ قبض: {0}'}"
+                               FontSize="20" FontAttributes="Bold"
+                               TextColor="{StaticResource Danger}" />
+                    </Border>
+
+                    <Button Text="💳 پرداخت با دستگاه POS"
+                            Command="{Binding PayCommand}"
+                            Style="{StaticResource SuccessButton}"
+                            Margin="0,12,0,0" />
+                </StackLayout>
+            </Border>
 
             <!-- وضعیت -->
-            <Label Text="{Binding StatusMessage}" FontSize="16" TextColor="#37474F" HorizontalOptions="Center" />
+            <Label Text="{Binding StatusMessage}"
+                   FontSize="15"
+                   TextColor="{StaticResource TextSecondary}"
+                   HorizontalOptions="Center" />
 
         </StackLayout>
     </ScrollView>

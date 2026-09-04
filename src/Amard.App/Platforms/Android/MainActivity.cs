@@ -7,7 +7,7 @@ using Microsoft.Maui;
 namespace Amard.App.Platforms.Android;
 
 [Activity(
-    Theme = "@style/Maui.SplashTheme",
+    Theme = "@style/Amard.MainTheme",
     MainLauncher = true,
     ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation |
         ConfigChanges.UiMode | ConfigChanges.ScreenLayout |

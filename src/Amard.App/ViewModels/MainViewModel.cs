@@ -36,7 +36,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         _api = new BillApiService(new HttpClient
         {
-            BaseAddress = new Uri(AppConstants.ApiBaseUrl),
+            // آدرس پایه در BillApiService لحظه‌ای از AppConstants خوانده می‌شود
+            // تا تغییر تنظیمات در صفحه‌ی «تنظیمات» بلافاصله اعمال شود.
             Timeout = TimeSpan.FromSeconds(30)
         });
         _pos = new PosService();

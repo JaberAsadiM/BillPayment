@@ -6,6 +6,9 @@ public partial class App : Application
     {
         Android.Util.Log.Info("AmardCrash", "App ctor: starting");
         InitializeComponent();
+        // قفل کردن تم روشن تا رنگ‌های پیش‌فرضِ حالت تاریکِ سیستم
+        // (متن سفید Entry/Picker روی زمینه روشن) اعمال نشود
+        UserAppTheme = AppTheme.Light;
         Android.Util.Log.Info("AmardCrash", "App ctor: done");
     }
 
