@@ -13,7 +13,7 @@ public partial class MainPage : ContentPage
         BindingContext = _vm = new MainViewModel();
 
         // پر کردن نوع جستجو پس از ساخته شدن ViewModel (تا SelectedIndexChanged کرش نکند)
-        SearchTypePicker.ItemsSource = new List<string> { "نام مالک", "کد ملی", "کد نوسازی" };
+        SearchTypePicker.ItemsSource = new List<string> { "کد پستی", "کد ملی", "کد نوسازی" };
         SearchTypePicker.SelectedIndex = 0;
     }
 

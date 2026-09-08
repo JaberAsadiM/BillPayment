@@ -1,10 +1,10 @@
-using Android.Content;
-using Android.Graphics;
 using Amard.App.Models;
 using Amard.App.Platforms.Android;
+using Android.Content;
+using Android.Graphics;
 using Com.Persianswitch.Smartpos.Aidl;
-using APaint = Android.Graphics.Paint;
 using AColor = Android.Graphics.Color;
+using APaint = Android.Graphics.Paint;
 
 namespace Amard.App.Services;
 

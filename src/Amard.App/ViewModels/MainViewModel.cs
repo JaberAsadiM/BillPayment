@@ -1,4 +1,3 @@
-using System.Windows.Input;
 using Amard.App.Models;
 using Amard.App.Platforms.Android;
 using Amard.App.Services;
@@ -13,7 +12,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly PosService _pos;
 
     [ObservableProperty]
-    private BillSearchType searchType = BillSearchType.OwnerName;
+    private BillSearchType searchType = BillSearchType.PostalCode;
 
     [ObservableProperty]
     private string searchValue = string.Empty;
@@ -24,13 +23,40 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private string statusMessage = string.Empty;
 
+    /// <summary>لیست قبض‌های یافت‌شده برای مالک انتخاب‌شده</summary>
     [ObservableProperty]
-    private BillInfo? currentBill;
+    private System.Collections.ObjectModel.ObservableCollection<BillInfo> billsList = new();
 
-    public bool HasBill => CurrentBill is not null;
-    public bool HasNoBill => CurrentBill is null;
+    /// <summary>لیست مالکین یافت‌شده در جستجو</summary>
+    [ObservableProperty]
+    private System.Collections.ObjectModel.ObservableCollection<Owners> ownersList = new();
 
-    public string AmountText => CurrentBill is null ? "-" : $"{CurrentBill.AmountRials:N0} ریال";
+    /// <summary>لیست پرونده‌های یافت‌شده با جستجوی کد ملی (فقط کد نوسازی و آدرس نمایش داده می‌شود)</summary>
+    [ObservableProperty]
+    private System.Collections.ObjectModel.ObservableCollection<ParvandehViewModel> parvandehList = new();
+
+    /// <summary>پرونده انتخاب‌شده از لیست پرونده‌ها (کلیک روی کد نوسازی)</summary>
+    [ObservableProperty]
+    private ParvandehViewModel? selectedParvandeh;
+
+    /// <summary>مالک انتخاب‌شده از لیست</summary>
+    [ObservableProperty]
+    private Owners? selectedOwner;
+
+    /// <summary>قبض انتخاب‌شده از لیست قبض‌ها که فقط همان پرداخت می‌شود</summary>
+    [ObservableProperty]
+    private BillInfo? selectedBill;
+
+    /// <summary>قبضی که در حال حاضر تراکنش پرداخت آن در جریان است</summary>
+    private BillInfo? _pendingPaymentBill;
+
+    public bool HasOwners => OwnersList.Count > 0;
+    public bool HasParvandehs => ParvandehList.Count > 0;
+    public bool HasSelectedOwner => SelectedOwner is not null;
+    public bool HasBills => BillsList.Count > 0;
+    public bool HasSelectedBill => SelectedBill is not null;
+
+    public string AmountText => SelectedBill is null ? "-" : $"{SelectedBill.AmountRials:N0} ریال";
 
     public MainViewModel()
     {
@@ -46,25 +72,49 @@ public partial class MainViewModel : ObservableObject, IDisposable
         MainActivity.PaymentResultReceived += OnPaymentResultReceived;
     }
 
-    /// <summary>دکمه جستجوی قبض: ارسال اطلاعات به سرور و دریافت مبلغ</summary>
+    /// <summary>دکمه جستجوی قبض: با کد ملی لیست پرونده‌ها و با کد پستی/کد نوسازی لیست مالکین از سرور دریافت می‌شود</summary>
     [RelayCommand(CanExecute = nameof(CanSearch))]
     private async Task SearchAsync()
     {
         StatusMessage = string.Empty;
-        CurrentBill = null;
+        OwnersList.Clear();
+        SelectedOwner = null;
+        BillsList.Clear();
+        SelectedBill = null;
+        ParvandehList.Clear();
+        SelectedParvandeh = null;
         IsBusy = true;
 
         try
         {
-            var request = new BillSearchRequest
+            if (SearchType == BillSearchType.NationalCode)
             {
-                SearchType = SearchType,
-                SearchValue = SearchValue?.Trim() ?? string.Empty
-            };
+                // جستجو با کد ملی: سرور لیست پرونده‌ها (ParvandehViewModel) برمی‌گرداند
+                // که فقط کد نوسازی و آدرس آن به کاربر نمایش داده می‌شود
+                var parvandehs = await _api.SearchParvandehByNationalCodeAsync(SearchValue?.Trim() ?? string.Empty);
 
-            CurrentBill = await _api.SearchBillAsync(request);
-            OnPropertyChanged(nameof(AmountText));
-            StatusMessage = "قبض یافت شد. در صورت تمایل پرداخت کنید.";
+                foreach (var parvandeh in parvandehs)
+                    ParvandehList.Add(parvandeh);
+
+                OnPropertyChanged(nameof(HasParvandehs));
+                StatusMessage = $"{parvandehs.Count} پرونده یافت شد. برای مشاهده اطلاعات مالک، روی کد نوسازی مورد نظر ضربه بزنید.";
+            }
+            else
+            {
+                var request = new BillSearchRequest
+                {
+                    SearchType = SearchType,
+                    SearchValue = SearchValue?.Trim() ?? string.Empty
+                };
+
+                var owners = await _api.SearchOwnersAsync(request);
+
+                foreach (var owner in owners)
+                    OwnersList.Add(owner);
+
+                OnPropertyChanged(nameof(HasOwners));
+                StatusMessage = $"{owners.Count} مالک یافت شد. مالک مورد نظر را انتخاب کنید.";
+            }
         }
         catch (Exception ex)
         {
@@ -80,25 +130,148 @@ public partial class MainViewModel : ObservableObject, IDisposable
         !IsBusy && !string.IsNullOrWhiteSpace(SearchValue);
 
     partial void OnSearchValueChanged(string value) => SearchCommand.NotifyCanExecuteChanged();
-    partial void OnIsBusyChanged(bool value) => SearchCommand.NotifyCanExecuteChanged();
-
-    partial void OnCurrentBillChanged(BillInfo? value)
+    partial void OnIsBusyChanged(bool value)
     {
-        OnPropertyChanged(nameof(HasBill));
-        OnPropertyChanged(nameof(HasNoBill));
-        OnPropertyChanged(nameof(AmountText));
+        SearchCommand.NotifyCanExecuteChanged();
+        GetBillCommand.NotifyCanExecuteChanged();
+        PayCommand.NotifyCanExecuteChanged();
     }
 
-    /// <summary>دکمه پرداخت: ارسال مبلغ به دستگاه POS</summary>
-    [RelayCommand(CanExecute = nameof(CanPay))]
-    private async Task PayAsync()
+    partial void OnOwnersListChanged(System.Collections.ObjectModel.ObservableCollection<Owners> value) =>
+        OnPropertyChanged(nameof(HasOwners));
+
+    partial void OnParvandehListChanged(System.Collections.ObjectModel.ObservableCollection<ParvandehViewModel> value) =>
+        OnPropertyChanged(nameof(HasParvandehs));
+
+    partial void OnSelectedParvandehChanged(ParvandehViewModel? value)
     {
-        StatusMessage = "در انتظار پرداخت روی دستگاه POS ...";
+        // با کلیک روی هر پرونده (کد نوسازی)، اطلاعات مالک آن از سرور دریافت می‌شود
+        if (value is not null)
+            _ = LoadOwnersFromParvandehAsync(value);
+    }
+
+    /// <summary>
+    /// کلیک روی کد نوسازی در لیست پرونده‌ها: مجدداً به سرور می‌رود و با همان
+    /// کد نوسازی، اطلاعات مالک را مانند جستجوی کد نوسازی نمایش می‌دهد.
+    /// </summary>
+    private async Task LoadOwnersFromParvandehAsync(ParvandehViewModel parvandeh)
+    {
+        if (IsBusy)
+        {
+            SelectedParvandeh = null;
+            return;
+        }
+
+        StatusMessage = string.Empty;
         IsBusy = true;
 
         try
         {
-            await _pos.StartPaymentAsync(CurrentBill!);
+            var request = new BillSearchRequest
+            {
+                SearchType = BillSearchType.RenovationCode,
+                SearchValue = parvandeh.codeN ?? string.Empty
+            };
+
+            var owners = await _api.SearchOwnersAsync(request);
+
+            OwnersList.Clear();
+            SelectedOwner = null;
+            BillsList.Clear();
+            SelectedBill = null;
+
+            // لیست پرونده‌ها پاک می‌شود تا فقط اطلاعات مالک نمایش داده شود؛
+            // انتخاب هم ریست می‌شود تا کلیک دوباره روی همان آیتم هم کار کند
+            ParvandehList.Clear();
+            SelectedParvandeh = null;
+
+            foreach (var owner in owners)
+                OwnersList.Add(owner);
+
+            OnPropertyChanged(nameof(HasOwners));
+            OnPropertyChanged(nameof(HasParvandehs));
+            StatusMessage = $"{owners.Count} مالک یافت شد. مالک مورد نظر را انتخاب کنید.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"خطا در دریافت اطلاعات مالک: {ex.Message}";
+            SelectedParvandeh = null;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    partial void OnBillsListChanged(System.Collections.ObjectModel.ObservableCollection<BillInfo> value) =>
+        OnPropertyChanged(nameof(HasBills));
+
+    partial void OnSelectedOwnerChanged(Owners? value)
+    {
+        OnPropertyChanged(nameof(HasSelectedOwner));
+
+        // با تغییر مالک انتخاب‌شده، لیست قبض‌های قبلی پاک می‌شود تا دکمه «دریافت مبلغ قبض» دوباره ظاهر شود
+        BillsList.Clear();
+        SelectedBill = null;
+
+        GetBillCommand.NotifyCanExecuteChanged();
+    }
+
+    partial void OnSelectedBillChanged(BillInfo? value)
+    {
+        OnPropertyChanged(nameof(HasSelectedBill));
+        OnPropertyChanged(nameof(AmountText));
+        PayCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// دکمه «دریافت مبلغ قبض»: دریافت لیست قبض‌ها (مبلغ، شناسه قبض و شناسه پرداخت)
+    /// برای مالک انتخاب‌شده از سرور و نمایش آن‌ها به‌صورت لیست
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanGetBill))]
+    private async Task GetBillAsync()
+    {
+        StatusMessage = string.Empty;
+        IsBusy = true;
+
+        try
+        {
+            var bills = await _api.GetBillAsync(SelectedOwner!);
+
+            BillsList.Clear();
+            foreach (var bill in bills)
+                BillsList.Add(bill);
+
+            SelectedBill = null;
+
+            OnPropertyChanged(nameof(HasBills));
+            StatusMessage = $"{bills.Count} قبض یافت شد. قبض مورد نظر را انتخاب و پرداخت کنید.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"خطا در دریافت مبلغ قبض: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private bool CanGetBill() => !IsBusy && SelectedOwner is not null;
+
+    /// <summary>دکمه پرداخت: ارسال مبلغِ فقطِ قبض انتخاب‌شده به دستگاه POS</summary>
+    [RelayCommand(CanExecute = nameof(CanPay))]
+    private async Task PayAsync()
+    {
+        // قبض در جریان، قبل از شروع تراکنش ثابت می‌شود تا تغییر انتخاب، پرداخت را خراب نکند
+        _pendingPaymentBill = SelectedBill!;
+
+        StatusMessage = $"در انتظار پرداخت مبلغ {_pendingPaymentBill.AmountRials:N0} ریال روی دستگاه POS ...";
+        IsBusy = true;
+
+        try
+        {
+            await _pos.StartPaymentAsync(_pendingPaymentBill);
         }
         catch (Exception ex)
         {
@@ -107,7 +280,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private bool CanPay() => !IsBusy && HasBill;
+    private bool CanPay() => !IsBusy && SelectedBill is not null;
 
     /// <summary>نتیجه برگشتی از دستگاه POS</summary>
     private async void OnPaymentResultReceived(Android.Content.Intent? data)
@@ -127,8 +300,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             StatusMessage = "پرداخت موفق! در حال ثبت تأیید در سرور ...";
 
+            var paidBill = _pendingPaymentBill;
+            if (paidBill is null)
+            {
+                StatusMessage = "قبضی برای ثبت تأیید پرداخت یافت نشد.";
+                return;
+            }
+
             // اعلام پرداخت به سرور
-            var confirm = await _api.ConfirmPaymentAsync(CurrentBill!, posResult);
+            var confirm = await _api.ConfirmPaymentAsync(paidBill, posResult);
             if (!confirm.Success)
             {
                 StatusMessage = $"تأیید سرور ناموفق بود: {confirm.Message}";
@@ -140,7 +320,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
             // چاپ رسید
             try
             {
-                await _pos.PrintReceiptAsync(CurrentBill!, posResult);
+                await _pos.PrintReceiptAsync(paidBill, posResult);
                 StatusMessage = "✅ پرداخت با موفقیت انجام و رسید چاپ شد.";
             }
             catch (Exception printEx)

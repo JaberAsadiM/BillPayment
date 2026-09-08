@@ -3,6 +3,7 @@
     x:Class="Amard.App.Views.MainPage"
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+    xmlns:models="clr-namespace:Amard.App.Models"
     FlowDirection="RightToLeft"
     BackgroundColor="{StaticResource PageBackground}">
 
@@ -67,41 +68,225 @@
                                HorizontalOptions="Center"
                                Color="{StaticResource Primary}" />
 
-            <!-- کارت اطلاعات قبض -->
-            <Border IsVisible="{Binding HasBill}" Style="{StaticResource Card}">
-                <StackLayout Spacing="6">
-                    <Label Text="اطلاعات قبض" Style="{StaticResource SectionTitle}" />
+            <!-- کارت لیست پرونده‌های یافت‌شده با کد ملی (فقط کد نوسازی و آدرس) -->
+            <Border IsVisible="{Binding HasParvandehs}" Style="{StaticResource Card}">
+                <StackLayout Spacing="8">
+                    <Label Text="پرونده‌های یافت‌شده" Style="{StaticResource SectionTitle}" />
+                    <Label Text="برای مشاهده اطلاعات مالک، روی کد نوسازی مورد نظر ضربه بزنید"
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
 
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8" Padding="0,4">
-                        <Label Grid.Column="0" Text="صاحب قبض:" TextColor="{StaticResource TextSecondary}" />
-                        <Label Grid.Column="1" Text="{Binding CurrentBill.OwnerName}" FontAttributes="Bold" />
-                    </Grid>
+                    <CollectionView ItemsSource="{Binding ParvandehList}"
+                                    SelectionMode="Single"
+                                    SelectedItem="{Binding SelectedParvandeh, Mode=TwoWay}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:ParvandehViewModel">
+                                <Border StrokeShape="RoundRectangle 10"
+                                        Stroke="{StaticResource FieldBorder}"
+                                        StrokeThickness="1"
+                                        Padding="12,10"
+                                        Margin="0,2,0,2">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroupList>
+                                            <VisualStateGroup Name="CommonStates">
+                                                <VisualState Name="Normal" />
+                                                <VisualState Name="Selected">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource PrimarySoft}" />
+                                                        <Setter Property="Stroke" Value="{StaticResource Primary}" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateGroupList>
+                                    </VisualStateManager.VisualStateGroups>
 
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                        <Label Grid.Column="0" Text="شناسه قبض:" TextColor="{StaticResource TextSecondary}" />
-                        <Label Grid.Column="1" Text="{Binding CurrentBill.BillId}" />
-                    </Grid>
+                                    <Grid RowDefinitions="Auto,Auto" RowSpacing="2">
+                                        <!-- کد نوسازی -->
+                                        <Label Grid.Row="0"
+                                               Text="{Binding codeN, StringFormat='کد نوسازی: {0}'}"
+                                               FontAttributes="Bold"
+                                               FontSize="16" />
 
-                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
-                        <Label Grid.Column="0" Text="شناسه پرداخت:" TextColor="{StaticResource TextSecondary}" />
-                        <Label Grid.Column="1" Text="{Binding CurrentBill.PayId}" />
-                    </Grid>
+                                        <!-- آدرس -->
+                                        <Label Grid.Row="1"
+                                               Text="{Binding Address, StringFormat='آدرس: {0}'}"
+                                               FontSize="13"
+                                               LineBreakMode="WordWrap"
+                                               TextColor="{StaticResource TextSecondary}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        <CollectionView.EmptyView>
+                            <Label Text="پرونده‌ای یافت نشد."
+                                   HorizontalOptions="Center"
+                                   TextColor="{StaticResource TextSecondary}" />
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                </StackLayout>
+            </Border>
 
-                    <!-- مبلغ قبض در کادر برجسته -->
-                    <Border BackgroundColor="{StaticResource DangerSoft}"
-                            StrokeThickness="0"
-                            StrokeShape="RoundRectangle 12"
-                            Padding="14,10"
-                            Margin="0,8,0,0">
-                        <Label Text="{Binding AmountText, StringFormat='مبلغ قبض: {0}'}"
-                               FontSize="20" FontAttributes="Bold"
-                               TextColor="{StaticResource Danger}" />
-                    </Border>
+            <!-- کارت لیست مالکین یافت‌شده -->
+            <Border IsVisible="{Binding HasOwners}" Style="{StaticResource Card}">
+                <StackLayout Spacing="8">
+                    <Label Text="مالکین یافت‌شده" Style="{StaticResource SectionTitle}" />
+                    <Label Text="برای دریافت مبلغ قبض، یک مالک را از لیست انتخاب کنید"
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
 
-                    <Button Text="💳 پرداخت با دستگاه POS"
+                    <CollectionView ItemsSource="{Binding OwnersList}"
+                                    SelectionMode="Single"
+                                    SelectedItem="{Binding SelectedOwner, Mode=TwoWay}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:Owners">
+                                <Border StrokeShape="RoundRectangle 10"
+                                        Stroke="{StaticResource FieldBorder}"
+                                        StrokeThickness="1"
+                                        Padding="12,10"
+                                        Margin="0,2,0,2">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroupList>
+                                            <VisualStateGroup Name="CommonStates">
+                                                <VisualState Name="Normal" />
+                                                <VisualState Name="Selected">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource PrimarySoft}" />
+                                                        <Setter Property="Stroke" Value="{StaticResource Primary}" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateGroupList>
+                                    </VisualStateManager.VisualStateGroups>
+
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="2">
+                                        <!-- نام و نام خانوادگی -->
+                                        <Label Grid.Row="0" Grid.Column="0"
+                                               Text="{Binding OwnerName}"
+                                               FontAttributes="Bold"
+                                               FontSize="16" />
+
+                                        <!-- کد ملی -->
+                                        <Label Grid.Row="0" Grid.Column="1"
+                                               Text="{Binding NationalCode}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- نام پدر -->
+                                        <Label Grid.Row="1" Grid.Column="0"
+                                               Text="{Binding father, StringFormat='نام پدر: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- ردیف پرونده -->
+                                        <Label Grid.Row="1" Grid.Column="1"
+                                               Text="{Binding id, StringFormat='ردیف: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource TextSecondary}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        <CollectionView.EmptyView>
+                            <Label Text="مالکی یافت نشد."
+                                   HorizontalOptions="Center"
+                                   TextColor="{StaticResource TextSecondary}" />
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+
+                    <!-- دکمه دریافت مبلغ قبض برای مالک انتخاب‌شده -->
+                    <Button Text="📄 دریافت مبلغ قبض"
+                            Command="{Binding GetBillCommand}"
+                            IsVisible="{Binding HasSelectedOwner}"
+                            Style="{StaticResource OutlineButton}"
+                            Margin="0,8,0,0" />
+                </StackLayout>
+            </Border>
+
+            <!-- کارت لیست قبض‌های یافت‌شده -->
+            <Border IsVisible="{Binding HasBills}" Style="{StaticResource Card}">
+                <StackLayout Spacing="8">
+                    <Label Text="قبض‌های یافت‌شده" Style="{StaticResource SectionTitle}" />
+                    <Label Text="برای پرداخت، یک قبض را از لیست انتخاب کنید؛ فقط مبلغ همان قبض پرداخت می‌شود"
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
+
+                    <CollectionView ItemsSource="{Binding BillsList}"
+                                    SelectionMode="Single"
+                                    SelectedItem="{Binding SelectedBill, Mode=TwoWay}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:BillInfo">
+                                <Border StrokeShape="RoundRectangle 10"
+                                        Stroke="{StaticResource FieldBorder}"
+                                        StrokeThickness="1"
+                                        Padding="12,10"
+                                        Margin="0,2,0,2">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroupList>
+                                            <VisualStateGroup Name="CommonStates">
+                                                <VisualState Name="Normal" />
+                                                <VisualState Name="Selected">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource PrimarySoft}" />
+                                                        <Setter Property="Stroke" Value="{StaticResource Primary}" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateGroupList>
+                                    </VisualStateManager.VisualStateGroups>
+
+                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="2">
+                                        <!-- صاحب قبض -->
+                                        <Label Grid.Row="0" Grid.Column="0"
+                                               Text="{Binding OwnerName}"
+                                               FontAttributes="Bold"
+                                               FontSize="16" />
+
+                                        <!-- دوره / سال قبض -->
+                                        <Label Grid.Row="0" Grid.Column="1"
+                                               Text="{Binding Period, StringFormat='دوره: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- شناسه قبض -->
+                                        <Label Grid.Row="1" Grid.Column="0"
+                                               Text="{Binding BillId, StringFormat='شناسه قبض: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- شناسه پرداخت -->
+                                        <Label Grid.Row="1" Grid.Column="1"
+                                               Text="{Binding PayId, StringFormat='شناسه پرداخت: {0}'}"
+                                               FontSize="13"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- مبلغ قبض در کادر برجسته -->
+                                        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                                BackgroundColor="{StaticResource DangerSoft}"
+                                                StrokeThickness="0"
+                                                StrokeShape="RoundRectangle 8"
+                                                Padding="10,6"
+                                                Margin="0,6,0,0">
+                                            <Label Text="{Binding AmountRials, StringFormat='مبلغ: {0:N0} ریال'}"
+                                                   FontSize="17" FontAttributes="Bold"
+                                                   TextColor="{StaticResource Danger}" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        <CollectionView.EmptyView>
+                            <Label Text="قبضی یافت نشد."
+                                   HorizontalOptions="Center"
+                                   TextColor="{StaticResource TextSecondary}" />
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+
+                    <!-- دکمه پرداخت قبض انتخاب‌شده -->
+                    <Button Text="💳 پرداخت قبض انتخاب‌شده با دستگاه POS"
                             Command="{Binding PayCommand}"
+                            IsVisible="{Binding HasSelectedBill}"
                             Style="{StaticResource SuccessButton}"
-                            Margin="0,12,0,0" />
+                            Margin="0,8,0,0" />
                 </StackLayout>
             </Border>
 
