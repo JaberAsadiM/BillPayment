@@ -6,6 +6,10 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        // ثبت پروکسی وای‌فای دستگاه (در صورت وجود) قبل از ساخت هر HttpClient،
+        // تا مرورگر و اپ از یک مسیر به سرور بروند (جزئیات: HttpProxyHelper)
+        Amard.App.Services.HttpProxyHelper.EnsureConfigured();
+
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>();

@@ -3,6 +3,7 @@ using Amard.App.Platforms.Android;
 using Amard.App.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Maui.Networking;
 
 namespace Amard.App.ViewModels;
 
@@ -22,6 +23,27 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string statusMessage = string.Empty;
+
+    /// <summary>آیا دستگاه به اینترنت متصل است؟ (نمایش بنر وضعیت اتصال)</summary>
+    [ObservableProperty]
+    private bool isConnected;
+
+    /// <summary>متن فارسی وضعیت اتصال اینترنت دستگاه</summary>
+    [ObservableProperty]
+    private string connectionStatusText = string.Empty;
+
+    /// <summary>رنگ پس‌زمینه بنر وضعیت اتصال</summary>
+    [ObservableProperty]
+    private Color connectionBannerColor = Colors.Gray;
+
+    /// <summary>رنگ متن بنر وضعیت اتصال</summary>
+    [ObservableProperty]
+    private Color connectionTextColor = Colors.Black;
+
+    /// <summary>آیا پیام وضعیتی برای نمایش وجود دارد (کنترل نمایش کارت وضعیت)</summary>
+    public bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusMessage);
+
+    partial void OnStatusMessageChanged(string value) => OnPropertyChanged(nameof(HasStatusMessage));
 
     /// <summary>لیست قبض‌های یافت‌شده برای مالک انتخاب‌شده</summary>
     [ObservableProperty]
@@ -60,22 +82,78 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public MainViewModel()
     {
-        _api = new BillApiService(new HttpClient
-        {
-            // آدرس پایه در BillApiService لحظه‌ای از AppConstants خوانده می‌شود
-            // تا تغییر تنظیمات در صفحه‌ی «تنظیمات» بلافاصله اعمال شود.
-            Timeout = TimeSpan.FromSeconds(30)
-        });
+        // HttpClient استاندارد برنامه: اعتبارسنجی گواهی با لنگر داخلی (کار روی
+        // دستگاه‌های قدیمی) + پروکسی سیستم. آدرس پایه لحظه‌ای از AppConstants
+        // خوانده می‌شود تا تغییر تنظیمات بلافاصله اعمال شود.
+        _api = new BillApiService(ApiHttpClientFactory.Create(TimeSpan.FromSeconds(30)));
         _pos = new PosService();
 
         // نتیجه پرداخت از Activity دستگاه POS
         MainActivity.PaymentResultReceived += OnPaymentResultReceived;
+
+        // وضعیت اولیه اتصال + گوش دادن به تغییر شبکه (قطع/وصل شدن اینترنت دستگاه)
+        UpdateConnectionState();
+        Connectivity.ConnectivityChanged += OnConnectivityChanged;
+    }
+
+    /// <summary>تغییر شبکه دستگاه (روشن/خاموش شدن اینترنت) — به‌روزرسانی بنر وضعیت</summary>
+    private void OnConnectivityChanged(object? sender, ConnectivityChangedEventArgs e)
+    {
+        Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(UpdateConnectionState);
+    }
+
+    /// <summary>خواندن وضعیت فعلی اینترنت و تنظیم رنگ/متن بنر</summary>
+    private void UpdateConnectionState()
+    {
+        IsConnected = ConnectivityService.IsConnected;
+        if (IsConnected)
+        {
+            ConnectionStatusText = "● متصل به اینترنت";
+            ConnectionBannerColor = Color.FromArgb("#E8F5E9");
+            ConnectionTextColor = Color.FromArgb("#1B5E20");
+        }
+        else
+        {
+            ConnectionStatusText = "○ بدون اتصال به اینترنت";
+            ConnectionBannerColor = Color.FromArgb("#FFEBEE");
+            ConnectionTextColor = Color.FromArgb("#B71C1C");
+        }
+    }
+
+    /// <summary>دکمه «تست اتصال»: بررسی اینترنت دستگاه + رسیدن واقعی به سرور API</summary>
+    [RelayCommand]
+    private async Task CheckConnectionAsync()
+    {
+        if (IsBusy)
+            return;
+
+        IsBusy = true;
+        StatusMessage = "در حال بررسی اتصال به اینترنت و سرور ...";
+        try
+        {
+            var (ok, message, _) = await ConnectivityService.TestApiConnectionAsync();
+            StatusMessage = (ok ? "✅ " : "❌ ") + message;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"❌ خطا در تست اتصال: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     /// <summary>دکمه جستجوی قبض: با کد ملی لیست پرونده‌ها و با کد پستی/کد نوسازی لیست مالکین از سرور دریافت می‌شود</summary>
     [RelayCommand(CanExecute = nameof(CanSearch))]
     private async Task SearchAsync()
     {
+        if (!ConnectivityService.IsConnected)
+        {
+            StatusMessage = "❌ دستگاه به اینترنت متصل نیست. اتصال Wi-Fi یا دیتای سیم‌کارت دستگاه POS را بررسی کنید، سپس دوباره تلاش کنید.";
+            return;
+        }
+
         StatusMessage = string.Empty;
         OwnersList.Clear();
         SelectedOwner = null;
@@ -162,6 +240,13 @@ public partial class MainViewModel : ObservableObject, IDisposable
             return;
         }
 
+        if (!ConnectivityService.IsConnected)
+        {
+            StatusMessage = "❌ دستگاه به اینترنت متصل نیست. اتصال دستگاه را بررسی کنید، سپس دوباره تلاش کنید.";
+            SelectedParvandeh = null;
+            return;
+        }
+
         StatusMessage = string.Empty;
         IsBusy = true;
 
@@ -231,6 +316,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand(CanExecute = nameof(CanGetBill))]
     private async Task GetBillAsync()
     {
+        if (!ConnectivityService.IsConnected)
+        {
+            StatusMessage = "❌ دستگاه به اینترنت متصل نیست. اتصال دستگاه را بررسی کنید، سپس دوباره تلاش کنید.";
+            return;
+        }
+
         StatusMessage = string.Empty;
         IsBusy = true;
 
@@ -283,17 +374,30 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private bool CanPay() => !IsBusy && SelectedBill is not null;
 
     /// <summary>نتیجه برگشتی از دستگاه POS</summary>
-    private async void OnPaymentResultReceived(Android.Content.Intent? data)
+    private async void OnPaymentResultReceived(Android.Content.Intent? data, bool resultOk)
     {
         try
         {
             IsBusy = true;
-            var posResult = PosService.ParsePaymentResult(data);
+            var posResult = PosService.ParsePaymentResult(data, resultOk);
+
+            if (posResult.HostTranId == 0)
+                posResult.HostTranId = _pos.LastHostTranId;
+
+            // اگر نتیجه نامشخص بود (کد 9999)، طبق مستندات با getTransactionStatus استعلام می‌گیریم
+            if (!posResult.Success && posResult.Unknown && posResult.HostTranId != 0)
+            {
+                StatusMessage = "وضعیت پرداخت نامشخص است؛ در حال استعلام وضعیت تراکنش از دستگاه ...";
+
+                var inquiry = await _pos.InquireAsync(posResult.HostTranId);
+                if (inquiry is not null)
+                    posResult = inquiry;
+            }
 
             if (!posResult.Success)
             {
                 StatusMessage = posResult.Unknown
-                    ? "وضعیت پرداخت نامشخص است. لطفاً استعلام بگیرید."
+                    ? $"وضعیت پرداخت نامشخص است: {posResult.StatusMessage}"
                     : $"پرداخت ناموفق: {posResult.StatusMessage}";
                 return;
             }
@@ -341,6 +445,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void Dispose()
     {
         MainActivity.PaymentResultReceived -= OnPaymentResultReceived;
+        Connectivity.ConnectivityChanged -= OnConnectivityChanged;
         _pos.Dispose();
     }
 }

@@ -1,11 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET" />
-  <!-- سرویس POS اسان پرداخت -->
+  <!-- برای تشخیص اتصال اینترنت دستگاه (Connectivity API مائویی) -->
+  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+  <!-- برای شناسایی خودکار سرویس پرداخت در اندروید 11+ (اسکن برنامه‌های نصب‌شده) -->
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+  <!-- برای دانلود و نصب نسخه جدید (به‌روزرسانی خودکار) -->
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+  <!-- سرویس POS اسان پرداخت (طبق مستندات: دسترسی REMOTE برای اتصال به سرویس لازم است) -->
+  <uses-permission android:name="com.persianswitch.smartpos.permission.REMOTE" />
   <queries>
     <package android:name="com.persianswitch.smartpos" />
+    <!-- برای resolve شدن سرویس پرداخت پایانه در اندروید 11+ (package visibility) -->
+    <intent>
+      <action android:name="com.persianswitch.smartpos.service" />
+    </intent>
+    <!-- نصاب بسته اندروید (برای آپدیت خودکار) -->
+    <intent>
+      <action android:name="android.intent.action.VIEW" />
+      <data android:mimeType="application/vnd.android.package-archive" />
+    </intent>
   </queries>
   <application
       android:label="پرداخت قبض"
-      android:usesCleartextTraffic="true" />
+      android:usesCleartextTraffic="true">
+    <!-- اشتراک‌گذاری امن فایل APK دانلودشده با نصاب اندروید -->
+    <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.update.fileProvider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+      <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/update_file_paths" />
+    </provider>
+  </application>
 </manifest>

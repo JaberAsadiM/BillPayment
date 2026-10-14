@@ -18,8 +18,10 @@ public class MainActivity : MauiAppCompatActivity
 
     /// <summary>
     /// نتیجه تراکنش POS که بعد از بسته شدن Activity پرداخت برمی‌گردد.
+    /// پارامتر دوم بیانگر آن است که resultCode برابر RESULT_OK بوده است
+    /// (طبق مستندات، Intent دریافتی تنها در این حالت معتبر است).
     /// </summary>
-    public static event Action<Intent?>? PaymentResultReceived;
+    public static event Action<Intent?, bool>? PaymentResultReceived;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -36,7 +38,8 @@ public class MainActivity : MauiAppCompatActivity
 
         if (requestCode == PaymentRequestCode)
         {
-            PaymentResultReceived?.Invoke(data);
+            // طبق مستندات فقط در صورتی Intent معتبر است که resultCode برابر RESULT_OK باشد
+            PaymentResultReceived?.Invoke(data, resultCode == Result.Ok);
         }
     }
 }

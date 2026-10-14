@@ -2,3 +2,5 @@ bin/
 obj/
 .vs/
 *.user
+releases/
+build_update.log

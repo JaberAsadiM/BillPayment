@@ -126,6 +126,27 @@ public class PosPaymentResult
     public string Stan { get; set; } = string.Empty;
     public string Rrn { get; set; } = string.Empty;
     public string TransactionDate { get; set; } = string.Empty;
+
+    /// <summary>آیا resultCode اکتیویتی پرداخت برابر RESULT_OK بوده است (شرط اعتبار Intent)</summary>
+    public bool ResultOk { get; set; }
+
+    /// <summary>کد تراکنش میزبان (Host Tran Id / hti) که برای استعلام نتیجه استفاده می‌شود</summary>
+    public long HostTranId { get; set; }
+
+    /// <summary>مبلغ اعمال‌شده تراکنش پس از تخفیفات (aa) به ریال</summary>
+    public long AppliedAmountRials { get; set; }
+
+    /// <summary>توضیح تفاوت مبلغ درخواستی و مبلغ اعمال‌شده (aad)</summary>
+    public string AppliedAmountDescription { get; set; } = string.Empty;
+
+    /// <summary>آیا پرداخت از محل اعتبار پذیرنده انجام شده است (is_payment_by_credit)</summary>
+    public bool PaidByCredit { get; set; }
+
+    /// <summary>متن JSON پاسخ سرور (Host Response / response_data)</summary>
+    public string HostResponseJson { get; set; } = string.Empty;
+
+    /// <summary>کد وضعیت داخل HostResponse (فیلد sc) - صفر یعنی موفق</summary>
+    public string HostStatusCode { get; set; } = string.Empty;
 }
 
 public class EstelamGhabz

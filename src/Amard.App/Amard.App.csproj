@@ -9,8 +9,8 @@
     <RootNamespace>Amard.App</RootNamespace>
     <ApplicationId>com.amard.billpayment</ApplicationId>
     <ApplicationTitle>پرداخت قبض</ApplicationTitle>
-    <ApplicationVersion>1</ApplicationVersion>
-    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
+    <ApplicationVersion>2</ApplicationVersion>
+    <ApplicationDisplayVersion>1.1.0</ApplicationDisplayVersion>
 
     <!-- Single-project MAUI (Android only) -->
     <UseMaui>true</UseMaui>
@@ -24,9 +24,24 @@
     <UseRootNamespaceForManagedAidl>false</UseRootNamespaceForManagedAidl>
   </PropertyGroup>
 
+  <!-- امضای نسخه Release با keystore اختصاصی (SHA-1 ارسالی به آسان‌پرداخت) -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <AndroidKeyStore>true</AndroidKeyStore>
+    <AndroidSigningKeyStore>release.keystore</AndroidSigningKeyStore>
+    <AndroidSigningKeyAlias>amard-release</AndroidSigningKeyAlias>
+    <AndroidSigningKeyPass>amard-release-2026</AndroidSigningKeyPass>
+    <AndroidSigningStorePass>amard-release-2026</AndroidSigningStorePass>
+  </PropertyGroup>
+
   <ItemGroup>
     <!-- AIDL interfaces of AsanPardakht POS service -->
     <AndroidInterfaceDescription Include="Aidl\**\*.aidl" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- گواهی‌های لنگر اعتماد داخلی (ریشه Certum) برای اعتبارسنجی TLS روی دستگاه‌های قدیمی -->
+    <EmbeddedResource Include="Resources\Certs\certum_root.cer" />
+    <EmbeddedResource Include="Resources\Certs\certum_intermediate_r39.cer" />
   </ItemGroup>
 
   <ItemGroup>

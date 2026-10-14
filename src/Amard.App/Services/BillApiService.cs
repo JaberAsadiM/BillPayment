@@ -1,4 +1,5 @@
 using Amard.App.Models;
+using Microsoft.Maui.Networking;
 using System.Text;
 using System.Text.Json;
 
@@ -25,6 +26,101 @@ public class BillApiService : IBillApiService
     public BillApiService(HttpClient httpClient)
     {
         _httpClient = httpClient;
+
+        // اگر در تنظیمات وای‌فای دستگاه پروکسی تعریف شده باشد (مرورگر از آن استفاده
+        // می‌کند و جواب می‌گیرد)، باید پروکسی در HttpClient سراسری برنامه ثبت شود
+        // تا این HttpClient هم از همان مسیر (مرورگر) استفاده کند.
+        HttpProxyHelper.EnsureConfigured();
+    }
+
+    /// <summary>
+    /// اعتبارسنجی آدرس سرور + بررسی اتصال اینترنت قبل از هر درخواست.
+    /// آدرس نهایی را برمی‌گرداند تا در پیام خطا هم استفاده شود.
+    /// </summary>
+    private static string RequireBaseUrl()
+    {
+        if (!AppConstants.TryGetApiBaseUrl(out var baseUrl, out var error))
+            throw new InvalidOperationException(error);
+
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            throw new InvalidOperationException(
+                $"آدرس سرور نامعتبر است: «{baseUrl}». در صفحه تنظیمات آدرس صحیح را وارد کنید.");
+
+        // هشدار مشخص برای رایج‌ترین اشتباه: localhost روی دستگاه واقعی یعنی خودِ دستگاه POS
+        if (!IsEmulatorHost(uri.Host) &&
+            (uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+             uri.Host.Equals("127.0.0.1") ||
+             uri.Host.Equals("10.0.2.2")))
+            throw new InvalidOperationException(
+                $"آدرس سرور «{uri.Host}» روی دستگاه واقعی به خودِ دستگاه POS اشاره می‌کند، نه به سرور! " +
+                "در صفحه «تنظیمات»، فیلد «آدرس سرور برای دستگاه واقعی» را به IP شبکه یا دامنه اینترنتی سرور تغییر دهید.");
+
+        if (Connectivity.NetworkAccess != NetworkAccess.Internet)
+            throw new InvalidOperationException(
+                "دستگاه به اینترنت متصل نیست. اتصال Wi-Fi یا دیتای سیم‌کارت دستگاه POS را بررسی کنید.");
+
+        return baseUrl;
+    }
+
+    private static bool IsEmulatorHost(string host) =>
+        host.Equals("10.0.2.2", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>درخواست GET با پیام خطای فارسی شامل آدرس سرور</summary>
+    private async Task<HttpResponseMessage> GetWithErrorsAsync(string url, CancellationToken ct)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.GetAsync(url, ct);
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"سرور در زمان تعیین‌شده پاسخ نداد.\nآدرس: {url}\nسرعت اینترنت دستگاه یا روشن بودن سرور را بررسی کنید.", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException(
+                $"اتصال به سرور برقرار نشد.\nآدرس: {url}\n{ConnectivityService.ToPersianReason(ex)}\nجزئیات: {ex.Message}", ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = string.Empty;
+            try { body = await response.Content.ReadAsStringAsync(ct); } catch { /* ignore */ }
+            if (body.Length > 300) body = body[..300] + "…";
+            throw new InvalidOperationException(
+                $"سرور خطای {(int)response.StatusCode} برگرداند.\nآدرس: {url}" +
+                (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nپاسخ سرور: {body}"));
+        }
+
+        return response;
+    }
+
+    /// <summary>درخواست POST با پیام خطای فارسی شامل آدرس سرور</summary>
+    private async Task<HttpResponseMessage> PostWithErrorsAsync(string url, HttpContent content, CancellationToken ct)
+    {
+        HttpResponseMessage response;
+        try
+        {
+            response = await _httpClient.PostAsync(url, content, ct);
+        }
+        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"سرور در زمان تعیین‌شده پاسخ نداد.\nآدرس: {url}", ex);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new InvalidOperationException(
+                $"اتصال به سرور برقرار نشد.\nآدرس: {url}\n{ConnectivityService.ToPersianReason(ex)}\nجزئیات: {ex.Message}", ex);
+        }
+
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"ثبت تأیید در سرور ناموفق بود (کد {(int)response.StatusCode}).\nآدرس: {url}");
+
+        return response;
     }
 
     /// <summary>
@@ -33,17 +129,17 @@ public class BillApiService : IBillApiService
     public async Task<List<Owners>> SearchOwnersAsync(BillSearchRequest request, CancellationToken ct = default)
     {
         // آدرس کامل در لحظه از تنظیمات خوانده می‌شود (تغییر تنظیمات بلافاصله اعمال می‌شود)
+        var baseUrl = RequireBaseUrl();
         var url = "";
 
         if (request.SearchType == BillSearchType.RenovationCode)
-            url = $"{AppConstants.ApiBaseUrl}GetMalekin?codeNosazi={Uri.EscapeDataString(request.SearchValue)}";
+            url = $"{baseUrl}GetMalekin?codeNosazi={Uri.EscapeDataString(request.SearchValue)}";
 
         else if (request.SearchType == BillSearchType.PostalCode)
-            url = $"{AppConstants.ApiBaseUrl}GetMalekinByPostalCode?postalCode={Uri.EscapeDataString(request.SearchValue)}";
+            url = $"{baseUrl}GetMalekinByPostalCode?postalCode={Uri.EscapeDataString(request.SearchValue)}";
 
 
-        using var response = await _httpClient.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
+        using var response = await GetWithErrorsAsync(url, ct);
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         var result = await JsonSerializer.DeserializeAsync<List<Owners>>(stream, JsonOptions, ct);
@@ -95,10 +191,9 @@ public class BillApiService : IBillApiService
         // ساخت query string با فرمت صحیح
         //var folderIdParams = string.Join("&folderId=", folderIds);
         var folderIdParams = string.Join(",", folderIds);
-        var url = $"{AppConstants.ApiBaseUrl}GetRenovationCode?folderId={folderIdParams}";
+        var url = $"{RequireBaseUrl()}GetRenovationCode?folderId={folderIdParams}";
 
-        using var response = await _httpClient.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
+        using var response = await GetWithErrorsAsync(url, ct);
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         var result = await JsonSerializer.DeserializeAsync<List<string>>(stream, JsonOptions, ct);
@@ -117,10 +212,9 @@ public class BillApiService : IBillApiService
     public async Task<List<ParvandehViewModel>> SearchParvandehByNationalCodeAsync(string nationalCode, CancellationToken ct = default)
     {
         // آدرس کامل در لحظه از تنظیمات خوانده می‌شود (تغییر تنظیمات بلافاصله اعمال می‌شود)
-        var url = $"{AppConstants.ApiBaseUrl}GetMyProperty?nationalCode={Uri.EscapeDataString(nationalCode)}";
+        var url = $"{RequireBaseUrl()}GetMyProperty?nationalCode={Uri.EscapeDataString(nationalCode)}";
 
-        using var response = await _httpClient.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
+        using var response = await GetWithErrorsAsync(url, ct);
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         var result = await JsonSerializer.DeserializeAsync<List<ParvandehViewModel>>(stream, JsonOptions, ct);
@@ -138,12 +232,11 @@ public class BillApiService : IBillApiService
     public async Task<List<BillInfo>> GetBillAsync(Owners owner, CancellationToken ct = default)
     {
         // آدرس کامل در لحظه از تنظیمات خوانده می‌شود (تغییر تنظیمات بلافاصله اعمال می‌شود)
-        var url = $"{AppConstants.ApiBaseUrl}ReceiveBill" +
+        var url = $"{RequireBaseUrl()}ReceiveBill" +
                   $"?codeNosazi={Uri.EscapeDataString(owner.RenovationCode)}" +
                   $"&ownerId={Uri.EscapeDataString(((int)owner.id).ToString())}";
 
-        using var response = await _httpClient.GetAsync(url, ct);
-        response.EnsureSuccessStatusCode();
+        using var response = await GetWithErrorsAsync(url, ct);
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         var estelamGhabzList = await JsonSerializer.DeserializeAsync<List<EstelamGhabz>>(stream, JsonOptions, ct);
@@ -181,9 +274,12 @@ public class BillApiService : IBillApiService
             billId = bill.BillId,
             payId = bill.PayId,
             amountRials = bill.AmountRials,
+            appliedAmountRials = posResult.AppliedAmountRials,
             maskedCard = posResult.MaskedCard,
             stan = posResult.Stan,
             rrn = posResult.Rrn,
+            hostTranId = posResult.HostTranId,
+            paidByCredit = posResult.PaidByCredit,
             transactionDate = posResult.TransactionDate
         };
 
@@ -191,8 +287,7 @@ public class BillApiService : IBillApiService
         using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // آدرس کامل در لحظه از تنظیمات خوانده می‌شود (تغییر تنظیمات بلافاصله اعمال می‌شود)
-        using var response = await _httpClient.PostAsync($"{AppConstants.ApiBaseUrl}bill/confirm-payment", content, ct);
-        response.EnsureSuccessStatusCode();
+        using var response = await PostWithErrorsAsync($"{RequireBaseUrl()}bill/confirm-payment", content, ct);
 
         await using var stream = await response.Content.ReadAsStreamAsync(ct);
         var result = await JsonSerializer.DeserializeAsync<PaymentConfirmResult>(stream, JsonOptions, ct);

@@ -45,16 +45,43 @@
                 </StackLayout>
             </Border>
 
+            <!-- کارت وضعیت اتصال اینترنت و سرور -->
+            <Border Style="{StaticResource Card}">
+                <StackLayout Spacing="4">
+                    <Label Text="📶 وضعیت اتصال" Style="{StaticResource SectionTitle}" />
+
+                    <Label Text="{Binding ConnectionStatusText}"
+                           FontSize="14" FontAttributes="Bold"
+                           TextColor="{StaticResource TextPrimary}" />
+
+                    <Label Text="برای اطمینان از رسیدن دستگاه به سرور، دکمه زیر را بزنید:"
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
+
+                    <Button Text="🔌 تست اتصال به اینترنت و سرور"
+                            Command="{Binding TestConnectionCommand}"
+                            Style="{StaticResource OutlineButton}"
+                            IsEnabled="{Binding IsNotBusy}"
+                            Margin="0,6,0,0" />
+
+                    <Label Text="{Binding ApiTestResult}"
+                           FontSize="13"
+                           LineBreakMode="WordWrap"
+                           TextColor="{StaticResource TextPrimary}"
+                           IsVisible="{Binding HasApiTestResult}" />
+                </StackLayout>
+            </Border>
+
             <!-- کارت تنظیمات سرور API -->
             <Border Style="{StaticResource Card}">
                 <StackLayout Spacing="4">
                     <Label Text="🌐 سرور API" Style="{StaticResource SectionTitle}" />
 
-                    <Label Text="پورت سرور API" Style="{StaticResource FieldLabel}" />
+                    <Label Text="پورت سرور API (برای سرور https خالی بگذارید)" Style="{StaticResource FieldLabel}" />
                     <Border Style="{StaticResource Field}">
                         <Entry Text="{Binding ApiPort, Mode=TwoWay}"
                                Keyboard="Numeric"
-                               Placeholder="مثلاً 8008" />
+                               Placeholder="خالی = پیش‌فرض (https: ‏443)" />
                     </Border>
 
                     <Label Text="مسیر پایه سرور API" Style="{StaticResource FieldLabel}" />
@@ -69,6 +96,9 @@
                                Keyboard="Url"
                                Placeholder="مثلاً 192.168.1.5 یا localhost" />
                     </Border>
+                    <Label Text="روی دستگاه POS مقدار localhost به خودِ دستگاه اشاره می‌کند! برای سرور اینترنتی، دامنه یا IP عمومی را وارد کنید؛ مثلاً https://api.example.com"
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
 
                     <Label Text="آدرس سرور برای شبیه‌ساز" Style="{StaticResource FieldLabel}" />
                     <Border Style="{StaticResource Field}">
@@ -76,6 +106,56 @@
                                Keyboard="Url"
                                Placeholder="مثلاً 192.168.1.2" />
                     </Border>
+                </StackLayout>
+            </Border>
+
+            <!-- کارت به‌روزرسانی برنامه -->
+            <Border Style="{StaticResource Card}">
+                <StackLayout Spacing="4">
+                    <Label Text="🔄 به‌روزرسانی برنامه" Style="{StaticResource SectionTitle}" />
+
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                        <StackLayout Grid.Column="0" Spacing="2">
+                            <Label Text="نسخه نصب‌شده" Style="{StaticResource FieldLabel}" />
+                            <Label Text="{Binding CurrentAppVersion}"
+                                   FontAttributes="Bold" FontSize="16"
+                                   TextColor="{StaticResource TextPrimary}" />
+                        </StackLayout>
+                        <StackLayout Grid.Column="1" Spacing="2">
+                            <Label Text="آخرین نسخه منتشرشده" Style="{StaticResource FieldLabel}" />
+                            <Label Text="{Binding LatestVersion}"
+                                   FontAttributes="Bold" FontSize="16"
+                                   TextColor="{StaticResource TextPrimary}" />
+                        </StackLayout>
+                    </Grid>
+
+                    <Label Text="{Binding UpdateStatus}"
+                           FontSize="14"
+                           Margin="0,8,0,0"
+                           TextColor="{Binding UpdateStatusColor}" />
+
+                    <Label Text="{Binding ReleaseNotes}"
+                           FontSize="13"
+                           LineBreakMode="WordWrap"
+                           TextColor="{StaticResource TextSecondary}"
+                           IsVisible="{Binding HasReleaseNotes}" />
+
+                    <ProgressBar Progress="{Binding UpdateProgress}"
+                                 IsVisible="{Binding IsBusy}"
+                                 HeightRequest="8"
+                                 Margin="0,8,0,0" />
+
+                    <Button Text="🔍 بررسی نسخه جدید"
+                            Command="{Binding CheckForUpdateCommand}"
+                            Style="{StaticResource OutlineButton}"
+                            IsEnabled="{Binding IsNotBusy}"
+                            Margin="0,10,0,0" />
+
+                    <Button Text="⬇️ دانلود و نصب نسخه جدید"
+                            Command="{Binding DownloadAndInstallCommand}"
+                            Style="{StaticResource SuccessButton}"
+                            IsEnabled="{Binding IsNotBusy}"
+                            IsVisible="{Binding HasUpdate}" />
                 </StackLayout>
             </Border>
 
@@ -89,11 +169,20 @@
                         <Entry Text="{Binding PosServicePackage, Mode=TwoWay}"
                                Placeholder="مثلاً com.persianswitch.smartpos" />
                     </Border>
+                    <Label Text="اگر نام دقیق پکیج را نمی‌دانید، از «شناسایی خودکار سرویس پرداخت» در پایین همین صفحه استفاده کنید."
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
 
-                    <Label Text="اکشن سرویس IPosService" Style="{StaticResource FieldLabel}" />
+                    <Label Text="نام کلاس سرویس POS (اتصال مستقیم)" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding PosServiceClass, Mode=TwoWay}"
+                               Placeholder="مثلاً com.persianswitch.smartpos.coreservice.ApplicationService" />
+                    </Border>
+
+                    <Label Text="اکشن سرویس پرداخت پایانه (IPosService)" Style="{StaticResource FieldLabel}" />
                     <Border Style="{StaticResource Field}">
                         <Entry Text="{Binding PosServiceAction, Mode=TwoWay}"
-                               Placeholder="مثلاً com.persianswitch.smartpos.aidl.IPosService" />
+                               Placeholder="com.persianswitch.smartpos.service" />
                     </Border>
 
                     <Label Text="کد تراکنش خرید" Style="{StaticResource FieldLabel}" />
@@ -114,14 +203,95 @@
                     <Border Style="{StaticResource Field}">
                         <Entry Text="{Binding HostId, Mode=TwoWay}"
                                Keyboard="Numeric"
-                               Placeholder="مثلاً 1" />
+                               Placeholder="مثلاً 2040" />
                     </Border>
+
+                    <Label Text="کلید API میزبان (host api key)" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding HostApiKey, Mode=TwoWay}"
+                               Placeholder="کلید دریافتی از آسان‌پرداخت" />
+                    </Border>
+                    <Label Text="این کلید در فیلد hak داخل درخواست پرداخت (HostRequest) به سرویس POS ارسال می‌شود."
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
 
                     <Label Text="زبان SDK دستگاه" Style="{StaticResource FieldLabel}" />
                     <Border Style="{StaticResource Field}">
                         <Entry Text="{Binding Lang, Mode=TwoWay}"
                                Placeholder="مثلاً fa" />
                     </Border>
+                </StackLayout>
+            </Border>
+
+            <!-- کارت شناسایی خودکار سرویس پرداخت -->
+            <Border Style="{StaticResource Card}">
+                <StackLayout Spacing="4">
+                    <Label Text="🔍 شناسایی خودکار سرویس پرداخت" Style="{StaticResource SectionTitle}" />
+
+                    <Label Text="نام پکیج سرویس روی دستگاه‌های مختلف فرق می‌کند؛ این دکمه همه سرویس‌های نصب‌شده را اسکن می‌کند و همان که اپ تست آسان‌پرداخت با آن کار می‌کند را پیدا می‌کند."
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
+
+                    <Button Text="🔍 شروع شناسایی"
+                            Command="{Binding DiscoverPosServiceCommand}"
+                            Style="{StaticResource OutlineButton}"
+                            IsEnabled="{Binding IsNotBusy}"
+                            Margin="0,6,0,0" />
+
+                    <Label Text="{Binding DiscoveryStatus}"
+                           FontSize="13"
+                           LineBreakMode="WordWrap"
+                           TextColor="{StaticResource TextPrimary}"
+                           IsVisible="{Binding HasDiscoveryStatus}" />
+
+                    <CollectionView ItemsSource="{Binding DiscoveredServices}"
+                                    SelectionMode="Single"
+                                    SelectedItem="{Binding SelectedCandidate, Mode=TwoWay}"
+                                    IsVisible="{Binding HasDiscoveredServices}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border StrokeShape="RoundRectangle 10"
+                                        Stroke="{StaticResource FieldBorder}"
+                                        StrokeThickness="1"
+                                        Padding="12,10"
+                                        Margin="0,2,0,2">
+                                    <VisualStateManager.VisualStateGroups>
+                                        <VisualStateGroupList>
+                                            <VisualStateGroup Name="CommonStates">
+                                                <VisualState Name="Normal" />
+                                                <VisualState Name="Selected">
+                                                    <VisualState.Setters>
+                                                        <Setter Property="BackgroundColor" Value="{StaticResource PrimarySoft}" />
+                                                        <Setter Property="Stroke" Value="{StaticResource Primary}" />
+                                                    </VisualState.Setters>
+                                                </VisualState>
+                                            </VisualStateGroup>
+                                        </VisualStateGroupList>
+                                    </VisualStateManager.VisualStateGroups>
+
+                                    <StackLayout Spacing="2">
+                                        <Label Text="{Binding PackageName}"
+                                               FontAttributes="Bold"
+                                               FontSize="14" />
+                                        <Label Text="{Binding ClassName}"
+                                               FontSize="12"
+                                               LineBreakMode="TailTruncation"
+                                               TextColor="{StaticResource TextSecondary}" />
+                                        <Label Text="{Binding Source, StringFormat='منبع: {0}'}"
+                                               FontSize="11"
+                                               TextColor="{StaticResource TextSecondary}" />
+                                    </StackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Button Text="✅ اعمال سرویس انتخاب‌شده در تنظیمات"
+                            Command="{Binding ApplyCandidateCommand}"
+                            Style="{StaticResource SuccessButton}"
+                            IsEnabled="{Binding IsNotBusy}"
+                            IsVisible="{Binding HasDiscoveredServices}"
+                            Margin="0,6,0,0" />
                 </StackLayout>
             </Border>
 

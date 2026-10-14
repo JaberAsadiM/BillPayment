@@ -15,7 +15,29 @@
     </ContentPage.ToolbarItems>
 
     <ScrollView>
-        <StackLayout Padding="20,16" Spacing="16">
+        <StackLayout Padding="20,16,20,48" Spacing="16">
+
+            <!-- بنر وضعیت اتصال اینترنت دستگاه + دکمه تست اتصال به سرور -->
+            <Border BackgroundColor="{Binding ConnectionBannerColor}"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 14"
+                    Padding="12,8">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <Label Grid.Column="0"
+                           Text="{Binding ConnectionStatusText}"
+                           FontSize="13" FontAttributes="Bold"
+                           TextColor="{Binding ConnectionTextColor}"
+                           VerticalOptions="Center" />
+                    <Button Grid.Column="1"
+                            Text="تست اتصال"
+                            Command="{Binding CheckConnectionCommand}"
+                            BackgroundColor="{Binding ConnectionTextColor}"
+                            TextColor="White"
+                            FontSize="12"
+                            Padding="14,4"
+                            CornerRadius="8" />
+                </Grid>
+            </Border>
 
             <!-- هدر با پس‌زمینه گرادیانی -->
             <Border Style="{StaticResource Card}" StrokeThickness="0">
@@ -158,22 +180,17 @@
                                         </VisualStateGroupList>
                                     </VisualStateManager.VisualStateGroups>
 
-                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" RowSpacing="2">
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
                                         <!-- نام و نام خانوادگی -->
-                                        <Label Grid.Row="0" Grid.Column="0"
-                                               Text="{Binding OwnerName}"
+                                        <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                                               Text="{Binding OwnerName, StringFormat='نام و نام خانوادگی: {0}'}"
                                                FontAttributes="Bold"
-                                               FontSize="16" />
+                                               FontSize="16"
+                                               LineBreakMode="TailTruncation" />
 
                                         <!-- کد ملی -->
-                                        <Label Grid.Row="0" Grid.Column="1"
-                                               Text="{Binding NationalCode}"
-                                               FontSize="13"
-                                               TextColor="{StaticResource TextSecondary}" />
-
-                                        <!-- نام پدر -->
                                         <Label Grid.Row="1" Grid.Column="0"
-                                               Text="{Binding father, StringFormat='نام پدر: {0}'}"
+                                               Text="{Binding NationalCode, StringFormat='کد ملی: {0}'}"
                                                FontSize="13"
                                                TextColor="{StaticResource TextSecondary}" />
 
@@ -181,7 +198,23 @@
                                         <Label Grid.Row="1" Grid.Column="1"
                                                Text="{Binding id, StringFormat='ردیف: {0}'}"
                                                FontSize="13"
+                                               HorizontalTextAlignment="End"
                                                TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- نام پدر -->
+                                        <Label Grid.Row="2" Grid.Column="0"
+                                               Text="{Binding father, StringFormat='نام پدر: {0}'}"
+                                               FontSize="13"
+                                               LineBreakMode="TailTruncation"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- شماره موبایل مالک (mob) -->
+                                        <Label Grid.Row="2" Grid.Column="1"
+                                               Text="{Binding mob, StringFormat='موبایل: {0}'}"
+                                               FontSize="13"
+                                               HorizontalTextAlignment="End"
+                                               TextColor="{StaticResource TextSecondary}" />
+
                                     </Grid>
                                 </Border>
                             </DataTemplate>
@@ -234,29 +267,34 @@
                                         </VisualStateGroupList>
                                     </VisualStateManager.VisualStateGroups>
 
-                                    <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="2">
+                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
                                         <!-- صاحب قبض -->
                                         <Label Grid.Row="0" Grid.Column="0"
                                                Text="{Binding OwnerName}"
                                                FontAttributes="Bold"
-                                               FontSize="16" />
+                                               FontSize="16"
+                                               LineBreakMode="TailTruncation" />
 
                                         <!-- دوره / سال قبض -->
                                         <Label Grid.Row="0" Grid.Column="1"
                                                Text="{Binding Period, StringFormat='دوره: {0}'}"
                                                FontSize="13"
+                                               HorizontalTextAlignment="End"
                                                TextColor="{StaticResource TextSecondary}" />
 
                                         <!-- شناسه قبض -->
                                         <Label Grid.Row="1" Grid.Column="0"
                                                Text="{Binding BillId, StringFormat='شناسه قبض: {0}'}"
                                                FontSize="13"
+                                               LineBreakMode="TailTruncation"
                                                TextColor="{StaticResource TextSecondary}" />
 
                                         <!-- شناسه پرداخت -->
                                         <Label Grid.Row="1" Grid.Column="1"
                                                Text="{Binding PayId, StringFormat='شناسه پرداخت: {0}'}"
                                                FontSize="13"
+                                               HorizontalTextAlignment="End"
+                                               LineBreakMode="TailTruncation"
                                                TextColor="{StaticResource TextSecondary}" />
 
                                         <!-- مبلغ قبض در کادر برجسته -->
@@ -291,10 +329,19 @@
             </Border>
 
             <!-- وضعیت -->
-            <Label Text="{Binding StatusMessage}"
-                   FontSize="15"
-                   TextColor="{StaticResource TextSecondary}"
-                   HorizontalOptions="Center" />
+            <Border IsVisible="{Binding HasStatusMessage}"
+                    BackgroundColor="{StaticResource PrimarySoft}"
+                    StrokeThickness="0"
+                    StrokeShape="RoundRectangle 14"
+                    Padding="16,12"
+                    Margin="0,4,0,0">
+                <Label Text="{Binding StatusMessage}"
+                       FontSize="15"
+                       TextColor="{StaticResource Primary}"
+                       HorizontalTextAlignment="Center"
+                       HorizontalOptions="Center"
+                       LineBreakMode="WordWrap" />
+            </Border>
 
         </StackLayout>
     </ScrollView>

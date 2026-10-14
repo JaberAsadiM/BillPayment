@@ -1,5 +1,7 @@
 namespace Amard.App;
 
+using Amard.App.Services;
+
 public partial class App : Application
 {
     public App()
@@ -16,7 +18,10 @@ public partial class App : Application
     {
         try
         {
-            return new Window(new NavigationPage(new Views.MainPage()));
+            var window = new Window(new NavigationPage(new Views.MainPage()));
+            // بررسی خودکار نسخه جدید (یک‌بار، بعد از باز شدن پنجره)
+            window.Activated += OnWindowActivatedForUpdateCheck;
+            return window;
         }
         catch (Exception ex)
         {
@@ -35,6 +40,46 @@ public partial class App : Application
                     }
                 }
             });
+        }
+    }
+
+    /// <summary>
+    /// چند ثانیه بعد از شروع برنامه، نسخه جدید را از GitHub بررسی می‌کند؛
+    /// اگر نسخه جدید موجود باشد، به کاربر اطلاع می‌دهد و به صفحه تنظیمات هدایت می‌کند.
+    /// </summary>
+    private async void OnWindowActivatedForUpdateCheck(object? sender, EventArgs e)
+    {
+        var window = (Window)sender!;
+        window.Activated -= OnWindowActivatedForUpdateCheck;
+
+        // کمی صبر تا صفحه اصلی کامل بارگذاری شود
+        await Task.Delay(3000);
+
+        try
+        {
+            if (!AppSettingsService.UpdateCheckOnStartup)
+                return;
+
+            var update = await new Services.UpdateService().CheckForUpdateAsync();
+            if (!update.UpdateAvailable)
+                return;
+
+            var page = Microsoft.Maui.Controls.Application.Current?.MainPage;
+            if (page is null)
+                return;
+
+            var goToSettings = await page.DisplayAlert(
+                "🔄 به‌روزرسانی جدید",
+                $"نسخه {update.LatestVersion} منتشر شده است (نسخه فعلی: {update.CurrentVersion}).\n" +
+                "برای دانلود و نصب، به صفحه تنظیمات بروید.",
+                "برو به تنظیمات", "بعداً");
+
+            if (goToSettings && page.Navigation is not null)
+                await page.Navigation.PushAsync(new Views.SettingsPage());
+        }
+        catch
+        {
+            // خطای بررسی نسخه هنگام شروع، برای کاربر مزاحمت ایجاد نکند
         }
     }
 }

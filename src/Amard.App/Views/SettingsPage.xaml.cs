@@ -9,4 +9,10 @@ public partial class SettingsPage : ContentPage
         InitializeComponent();
         BindingContext = new SettingsViewModel();
     }
+
+    protected override void OnAppearing()
+    {
+        base.OnAppearing();
+        (BindingContext as ViewModels.SettingsViewModel)?.CheckOnAppearing();
+    }
 }
