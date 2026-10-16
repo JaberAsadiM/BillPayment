@@ -1,6 +1,5 @@
 using Amard.App.Models;
 using Microsoft.Maui.Networking;
-using System.Text;
 using System.Text.Json;
 
 namespace Amard.App.Services;
@@ -14,7 +13,8 @@ public interface IBillApiService
     Task<List<Owners>> SearchOwnersAsync(BillSearchRequest request, CancellationToken ct = default);
     Task<List<ParvandehViewModel>> SearchParvandehByNationalCodeAsync(string nationalCode, CancellationToken ct = default);
     Task<List<BillInfo>> GetBillAsync(Owners owner, CancellationToken ct = default);
-    Task<PaymentConfirmResult> ConfirmPaymentAsync(BillInfo bill, PosPaymentResult posResult, CancellationToken ct = default);
+    Task<PaymentConfirmResult> ConfirmAmardFishAsync(BillInfo bill, PosPaymentResult posResult, CancellationToken ct = default);
+    Task<PaymentConfirmResult> ConfirmAmardFishAsync(PendingBillConfirmation pending, CancellationToken ct = default);
 }
 
 public class BillApiService : IBillApiService
@@ -94,31 +94,6 @@ public class BillApiService : IBillApiService
                 $"سرور خطای {(int)response.StatusCode} برگرداند.\nآدرس: {url}" +
                 (string.IsNullOrWhiteSpace(body) ? string.Empty : $"\nپاسخ سرور: {body}"));
         }
-
-        return response;
-    }
-
-    /// <summary>درخواست POST با پیام خطای فارسی شامل آدرس سرور</summary>
-    private async Task<HttpResponseMessage> PostWithErrorsAsync(string url, HttpContent content, CancellationToken ct)
-    {
-        HttpResponseMessage response;
-        try
-        {
-            response = await _httpClient.PostAsync(url, content, ct);
-        }
-        catch (TaskCanceledException ex) when (!ct.IsCancellationRequested)
-        {
-            throw new TimeoutException(
-                $"سرور در زمان تعیین‌شده پاسخ نداد.\nآدرس: {url}", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new InvalidOperationException(
-                $"اتصال به سرور برقرار نشد.\nآدرس: {url}\n{ConnectivityService.ToPersianReason(ex)}\nجزئیات: {ex.Message}", ex);
-        }
-
-        if (!response.IsSuccessStatusCode)
-            throw new InvalidOperationException($"ثبت تأیید در سرور ناموفق بود (کد {(int)response.StatusCode}).\nآدرس: {url}");
 
         return response;
     }
@@ -265,33 +240,92 @@ public class BillApiService : IBillApiService
     }
 
     /// <summary>
-    /// اعلام پرداخت موفق به سرور (تأیید نهایی پرداخت قبض).
+    /// اعلام پرداخت موفق به سرور با فراخوانی متد ConfirmAmardFish (پارامترها از query string):
+    ///   ghabzID   => شناسه قبض (BillInfo.BillId)
+    ///   ParID     => شناسه پرداخت (BillInfo.PayId)
+    ///   date      => تاریخ پرداخت به شمسی (yyyy/MM/dd)
+    ///   trackingNo => شماره پیگیری ارسالی دستگاه POS (RRN و در نبود آن Stan)
+    /// آدرس کامل در لحظه از تنظیمات خوانده می‌شود (تغییر تنظیمات بلافاصله اعمال می‌شود).
     /// </summary>
-    public async Task<PaymentConfirmResult> ConfirmPaymentAsync(BillInfo bill, PosPaymentResult posResult, CancellationToken ct = default)
+    public Task<PaymentConfirmResult> ConfirmAmardFishAsync(BillInfo bill, PosPaymentResult posResult, CancellationToken ct = default) =>
+        ConfirmAmardFishAsync(
+            bill.BillId,
+            bill.PayId,
+            BuildPersianPaymentDate(posResult),
+            GetTrackingNo(posResult),
+            ct);
+
+    /// <summary>ارسال مجدد نتیجه‌ی پرداختی که قبلاً در حافظه‌ی دستگاه ذخیره شده است</summary>
+    public Task<PaymentConfirmResult> ConfirmAmardFishAsync(PendingBillConfirmation pending, CancellationToken ct = default) =>
+        ConfirmAmardFishAsync(
+            pending.BillId,
+            pending.PayId,
+            pending.PaymentDate,
+            pending.TrackingNo,
+            ct);
+
+    private async Task<PaymentConfirmResult> ConfirmAmardFishAsync(string ghabzID, string parID, string date, string trackingNo, CancellationToken ct)
     {
-        var payload = new
+        var url = $"{RequireBaseUrl()}ConfirmAmardFish" +
+                  $"?ghabzID={Uri.EscapeDataString(ghabzID)}" +
+                  $"&ParID={Uri.EscapeDataString(parID)}" +
+                  $"&date={Uri.EscapeDataString(date)}" +
+                  $"&trackingNo={Uri.EscapeDataString(trackingNo)}";
+
+        using var response = await GetWithErrorsAsync(url, ct);
+
+        var body = await response.Content.ReadAsStringAsync(ct);
+
+        // پاسخ موفق HTTP یعنی ثبت انجام شده است؛ سرور ممکن است Ok() بدون بدنه برگرداند
+        if (string.IsNullOrWhiteSpace(body))
+            return new PaymentConfirmResult { Success = true, Message = "تأیید پرداخت در سرور ثبت شد." };
+
+        try
         {
-            billId = bill.BillId,
-            payId = bill.PayId,
-            amountRials = bill.AmountRials,
-            appliedAmountRials = posResult.AppliedAmountRials,
-            maskedCard = posResult.MaskedCard,
-            stan = posResult.Stan,
-            rrn = posResult.Rrn,
-            hostTranId = posResult.HostTranId,
-            paidByCredit = posResult.PaidByCredit,
-            transactionDate = posResult.TransactionDate
-        };
+            var result = JsonSerializer.Deserialize<PaymentConfirmResult>(body, JsonOptions);
+            if (result is not null)
+                return result;
+        }
+        catch (JsonException)
+        {
+            // بدنه پاسخ JSONِ موردانتظار نبود؛ چون HTTP موفق بوده، ثبت را موفق فرض می‌کنیم
+        }
 
-        var json = JsonSerializer.Serialize(payload, JsonOptions);
-        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var message = body.Length > 200 ? body[..200] + "…" : body;
+        return new PaymentConfirmResult { Success = true, Message = message };
+    }
 
-        // آدرس کامل در لحظه از تنظیمات خوانده می‌شود (تغییر تنظیمات بلافاصله اعمال می‌شود)
-        using var response = await PostWithErrorsAsync($"{RequireBaseUrl()}bill/confirm-payment", content, ct);
+    /// <summary>
+    /// تاریخ پرداخت به شمسی (yyyy/MM/dd).
+    /// ابتدا تاریخ تراکنش ارسالی دستگاه POS (میلادی، الگوی yyyy/MM/dd HH:mm:ss) تبدیل می‌شود؛
+    /// اگر دستگاه تاریخی نفرستاده یا قابل تجزیه نبود، تاریخ جاری دستگاه استفاده می‌شود.
+    /// </summary>
+    public static string BuildPersianPaymentDate(PosPaymentResult posResult)
+    {
+        var date = DateTime.Now;
 
-        await using var stream = await response.Content.ReadAsStreamAsync(ct);
-        var result = await JsonSerializer.DeserializeAsync<PaymentConfirmResult>(stream, JsonOptions, ct);
+        if (!string.IsNullOrWhiteSpace(posResult.TransactionDate) &&
+            DateTime.TryParseExact(
+                posResult.TransactionDate, "yyyy/MM/dd HH:mm:ss",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None, out var parsed))
+        {
+            date = parsed;
+        }
 
-        return result ?? new PaymentConfirmResult { Success = true, Message = "تأیید پرداخت ارسال شد." };
+        var persian = new System.Globalization.PersianCalendar();
+        return $"{persian.GetYear(date):0000}/{persian.GetMonth(date):00}/{persian.GetDayOfMonth(date):00}";
+    }
+
+    /// <summary>شماره پیگیری تراکنش ارسالی دستگاه POS (RRN و در نبود آن Stan)</summary>
+    public static string GetTrackingNo(PosPaymentResult posResult)
+    {
+        if (!string.IsNullOrWhiteSpace(posResult.Rrn) && posResult.Rrn != "-1")
+            return posResult.Rrn;
+
+        if (!string.IsNullOrWhiteSpace(posResult.Stan) && posResult.Stan != "-1")
+            return posResult.Stan;
+
+        return string.Empty;
     }
 }

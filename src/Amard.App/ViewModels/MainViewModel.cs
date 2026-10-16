@@ -72,6 +72,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>قبضی که در حال حاضر تراکنش پرداخت آن در جریان است</summary>
     private BillInfo? _pendingPaymentBill;
 
+    /// <summary>صف فیش‌های پرداخت‌شده که نتیجه آن‌ها هنوز به سرور اعلام نشده (ذخیره در حافظه دستگاه)</summary>
+    private readonly PendingConfirmationStore _pendingStore;
+
     public bool HasOwners => OwnersList.Count > 0;
     public bool HasParvandehs => ParvandehList.Count > 0;
     public bool HasSelectedOwner => SelectedOwner is not null;
@@ -80,6 +83,20 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     public string AmountText => SelectedBill is null ? "-" : $"{SelectedBill.AmountRials:N0} ریال";
 
+    /// <summary>لیست فیش‌های پرداخت‌شده که نتیجه آن‌ها هنوز به سرور اعلام نشده (ارسال مجدد)</summary>
+    [ObservableProperty]
+    private System.Collections.ObjectModel.ObservableCollection<PendingBillConfirmation> pendingConfirmationsList = new();
+
+    /// <summary>متن تعداد فیش‌های در انتظار ارسال (نمایش زیر عنوان کارت ارسال مجدد)</summary>
+    [ObservableProperty]
+    private string pendingConfirmationsCountText = string.Empty;
+
+    /// <summary>آیا فیش پرداخت‌شده‌ی اعلام‌نشده‌ای برای ارسال مجدد وجود دارد؟ (نمایش کارت ارسال مجدد)</summary>
+    public bool HasPendingConfirmations => PendingConfirmationsList.Count > 0;
+
+    partial void OnPendingConfirmationsListChanged(System.Collections.ObjectModel.ObservableCollection<PendingBillConfirmation> value) =>
+        OnPropertyChanged(nameof(HasPendingConfirmations));
+
     public MainViewModel()
     {
         // HttpClient استاندارد برنامه: اعتبارسنجی گواهی با لنگر داخلی (کار روی
@@ -87,6 +104,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         // خوانده می‌شود تا تغییر تنظیمات بلافاصله اعمال شود.
         _api = new BillApiService(ApiHttpClientFactory.Create(TimeSpan.FromSeconds(30)));
         _pos = new PosService();
+        _pendingStore = new PendingConfirmationStore();
+        _pendingStore.Changed += RefreshPendingConfirmations;
 
         // نتیجه پرداخت از Activity دستگاه POS
         MainActivity.PaymentResultReceived += OnPaymentResultReceived;
@@ -94,6 +113,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
         // وضعیت اولیه اتصال + گوش دادن به تغییر شبکه (قطع/وصل شدن اینترنت دستگاه)
         UpdateConnectionState();
         Connectivity.ConnectivityChanged += OnConnectivityChanged;
+
+        // نمایش فیش‌های در انتظار ارسال به سرور (ممکن است از اجرای قبلی برنامه باقی مانده باشند)
+        RefreshPendingConfirmations();
     }
 
     /// <summary>تغییر شبکه دستگاه (روشن/خاموش شدن اینترنت) — به‌روزرسانی بنر وضعیت</summary>
@@ -213,6 +235,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
         SearchCommand.NotifyCanExecuteChanged();
         GetBillCommand.NotifyCanExecuteChanged();
         PayCommand.NotifyCanExecuteChanged();
+        ResendAllConfirmationsCommand.NotifyCanExecuteChanged();
+        SendPendingConfirmationCommand.NotifyCanExecuteChanged();
     }
 
     partial void OnOwnersListChanged(System.Collections.ObjectModel.ObservableCollection<Owners> value) =>
@@ -373,6 +397,105 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private bool CanPay() => !IsBusy && SelectedBill is not null;
 
+    /// <summary>
+    /// دکمه «📤 ارسال مجدد همه به سرور»: ارسال دونه‌دونه‌ی نتیجه‌ی همه‌ی پرداخت‌های موفقی که
+    /// هنوز در سرور ثبت نشده‌اند. هر فیش که با موفقیت ارسال شد از حافظه‌ی دستگاه حذف می‌شود.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanResendConfirmations))]
+    private async Task ResendAllConfirmationsAsync()
+    {
+        var items = _pendingStore.GetAll();
+        if (items.Count == 0)
+            return;
+
+        IsBusy = true;
+        var sent = 0;
+        var failed = 0;
+
+        try
+        {
+            foreach (var item in items)
+            {
+                StatusMessage = $"در حال ارسال مجدد نتیجه پرداخت به سرور ({sent + failed + 1} از {items.Count}) ...";
+
+                try
+                {
+                    var result = await _api.ConfirmAmardFishAsync(item);
+                    if (result.Success)
+                    {
+                        _pendingStore.Remove(item);
+                        sent++;
+                    }
+                    else
+                    {
+                        failed++;
+                    }
+                }
+                catch (Exception)
+                {
+                    failed++;
+                }
+            }
+
+            StatusMessage = failed == 0
+                ? $"✅ نتیجه {sent} فیش پرداخت‌شده با موفقیت به سرور اعلام شد."
+                : $"✅ {sent} فیش به سرور اعلام شد؛ ❌ برای {failed} فیش ارتباط با سرور برقرار نشد. پس از رفع مشکل دوباره تلاش کنید.";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private bool CanResendConfirmations() => !IsBusy && _pendingStore.Count > 0;
+
+    /// <summary>دکمه «📤 ارسال این فیش» داخل هر آیتم: ارسال دونه‌دونه‌ی یک فیش مشخص از لیست انتظار</summary>
+    [RelayCommand(CanExecute = nameof(CanSendPendingConfirmation))]
+    private async Task SendPendingConfirmationAsync(PendingBillConfirmation? item)
+    {
+        if (item is null)
+            return;
+
+        IsBusy = true;
+        StatusMessage = $"در حال ارسال نتیجه پرداخت قبض «{item.BillId}» به سرور ...";
+
+        try
+        {
+            var result = await _api.ConfirmAmardFishAsync(item);
+            if (result.Success)
+            {
+                _pendingStore.Remove(item);
+                StatusMessage = "✅ نتیجه پرداخت با موفقیت به سرور اعلام شد.";
+            }
+            else
+            {
+                StatusMessage = $"❌ ارسال به سرور ناموفق بود: {result.Message}";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"❌ ارسال به سرور ناموفق بود: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private bool CanSendPendingConfirmation(PendingBillConfirmation? item) => !IsBusy && item is not null;
+
+    /// <summary>به‌روزرسانی لیست و شمارنده‌ی فیش‌های در انتظار ارسال به سرور (بعد از هر تغییر در صف)</summary>
+    private void RefreshPendingConfirmations()
+    {
+        var items = _pendingStore.GetAll();
+        PendingConfirmationsList = new System.Collections.ObjectModel.ObservableCollection<PendingBillConfirmation>(items);
+        PendingConfirmationsCountText = items.Count == 0
+            ? string.Empty
+            : $"{items.Count} فیش پرداخت‌شده در انتظار ارسال به سرور";
+
+        ResendAllConfirmationsCommand.NotifyCanExecuteChanged();
+    }
+
     /// <summary>نتیجه برگشتی از دستگاه POS</summary>
     private async void OnPaymentResultReceived(Android.Content.Intent? data, bool resultOk)
     {
@@ -411,25 +534,60 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 return;
             }
 
-            // اعلام پرداخت به سرور
-            var confirm = await _api.ConfirmPaymentAsync(paidBill, posResult);
-            if (!confirm.Success)
+            // اعلام پرداخت به سرور (ConfirmAmardFish: شناسه قبض، شناسه پرداخت، تاریخ شمسی و شماره پیگیری)
+            PaymentConfirmResult? confirm = null;
+            var confirmError = string.Empty;
+            try
             {
-                StatusMessage = $"تأیید سرور ناموفق بود: {confirm.Message}";
-                return;
+                confirm = await _api.ConfirmAmardFishAsync(paidBill, posResult);
+            }
+            catch (Exception ex)
+            {
+                confirmError = ex.Message;
             }
 
-            StatusMessage = "پرداخت تأیید شد. در حال چاپ رسید ...";
+            var confirmed = confirm is not null && confirm.Success;
 
-            // چاپ رسید
+            if (confirmed)
+            {
+                StatusMessage = "پرداخت تأیید شد. در حال چاپ رسید ...";
+            }
+            else
+            {
+                // پرداخت روی دستگاه موفق بوده؛ نتیجه در حافظه دستگاه ذخیره می‌شود تا
+                // با دکمه «ارسال مجدد» بعد از برطرف شدن مشکل اتصال، به سرور اعلام شود
+                _pendingStore.Add(new PendingBillConfirmation
+                {
+                    BillId = paidBill.BillId,
+                    PayId = paidBill.PayId,
+                    PaymentDate = BillApiService.BuildPersianPaymentDate(posResult),
+                    TrackingNo = BillApiService.GetTrackingNo(posResult),
+                    OwnerName = paidBill.OwnerName,
+                    AmountRials = paidBill.AmountRials,
+                    SavedAt = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)
+                });
+
+                var reason = string.IsNullOrWhiteSpace(confirmError)
+                    ? confirm?.Message ?? string.Empty
+                    : confirmError;
+                StatusMessage = "پرداخت موفق بود اما ثبت آن در سرور ناموفق بود" +
+                                (string.IsNullOrWhiteSpace(reason) ? "." : $": {reason}") +
+                                "\nنتیجه پرداخت در حافظه دستگاه ذخیره شد؛ پس از برطرف شدن مشکل اتصال، با دکمه «📤 ارسال مجدد به سرور» ارسال کنید.";
+            }
+
+            // چاپ رسید — پرداخت روی دستگاه موفق است؛ حتی اگر اعلام به سرور ناموفق بوده باشد چاپ می‌شود
             try
             {
                 await _pos.PrintReceiptAsync(paidBill, posResult);
-                StatusMessage = "✅ پرداخت با موفقیت انجام و رسید چاپ شد.";
+                StatusMessage = confirmed
+                    ? "✅ پرداخت با موفقیت انجام و رسید چاپ شد."
+                    : "✅ رسید چاپ شد؛ نتیجه پرداخت در حافظه ذخیره شد و در انتظار ارسال به سرور است.";
             }
             catch (Exception printEx)
             {
-                StatusMessage = $"پرداخت تأیید شد اما چاپ ناموفق بود: {printEx.Message}";
+                StatusMessage = confirmed
+                    ? $"پرداخت تأیید شد اما چاپ ناموفق بود: {printEx.Message}"
+                    : $"چاپ رسید ناموفق بود ({printEx.Message})؛ نتیجه پرداخت در حافظه ذخیره شد و در انتظار ارسال به سرور است.";
             }
         }
         catch (Exception ex)
@@ -446,6 +604,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     {
         MainActivity.PaymentResultReceived -= OnPaymentResultReceived;
         Connectivity.ConnectivityChanged -= OnConnectivityChanged;
+        _pendingStore.Changed -= RefreshPendingConfirmations;
         _pos.Dispose();
     }
 }

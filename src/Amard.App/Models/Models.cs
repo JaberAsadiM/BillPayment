@@ -115,6 +115,35 @@ public class PaymentConfirmResult
     public string Message { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// اطلاعات یک پرداختِ موفق که به‌دلیل برقرار نشدن ارتباط، هنوز به سرور اعلام نشده است.
+/// در حافظه‌ی دستگاه ذخیره می‌شود تا پس از رفع مشکل اتصال، با دکمه «ارسال مجدد»
+/// به متد ConfirmAmardFish سرور ارسال شود.
+/// </summary>
+public class PendingBillConfirmation
+{
+    /// <summary>شناسه قبض (پارامتر ghabzID)</summary>
+    public string BillId { get; set; } = string.Empty;
+
+    /// <summary>شناسه پرداخت (پارامتر ParID)</summary>
+    public string PayId { get; set; } = string.Empty;
+
+    /// <summary>تاریخ پرداخت به شمسی (yyyy/MM/dd) — پارامتر date</summary>
+    public string PaymentDate { get; set; } = string.Empty;
+
+    /// <summary>شماره پیگیری ارسالی دستگاه POS — پارامتر trackingNo</summary>
+    public string TrackingNo { get; set; } = string.Empty;
+
+    /// <summary>نام صاحب قبض (فقط برای نمایش در لیست)</summary>
+    public string OwnerName { get; set; } = string.Empty;
+
+    /// <summary>مبلغ پرداخت‌شده به ریال (فقط برای نمایش در لیست)</summary>
+    public long AmountRials { get; set; }
+
+    /// <summary>زمان ذخیره‌شدن رکورد روی دستگاه (میلادی — فقط برای عیب‌یابی)</summary>
+    public string SavedAt { get; set; } = string.Empty;
+}
+
 /// <summary>نتیجه پرداخت روی دستگاه POS</summary>
 public class PosPaymentResult
 {

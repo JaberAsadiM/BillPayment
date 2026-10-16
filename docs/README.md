@@ -9,7 +9,12 @@
    - JSON درخواست (`HostRequest`) با فیلدهای `hi/hti/hrt/hoc/hak/hav` و شناسه‌های قبض و پرداخت (`bi/pi`) ساخته می‌شود.
 4. کاربر پرداخت را روی دستگاه انجام می‌دهد؛ نتیجه در `MainActivity.OnActivityResult` دریافت می‌شود.
    در صورت نامشخص بودن نتیجه (`9999`)، وضعیت تراکنش با `getTransactionStatus` استعلام می‌شود.
-5. در صورت موفقیت، اپ پرداخت را به سرور اعلام می‌کند (`POST bill/confirm-payment`).
+5. در صورت موفقیت، اپ پرداخت را با متد `ConfirmAmardFish` به سرور اعلام می‌کند
+   (`GET {base}/ConfirmAmardFish?ghabzID=...&ParID=...&date=...&trackingNo=...`
+   — تاریخ به شمسی و شماره پیگیری = RRN دستگاه POS).
+   اگر ارتباط با سرور برقرار نشود، نتیجه تراکنش در حافظه دستگاه
+   (`Services/PendingConfirmationStore`) ذخیره می‌شود و کاربر می‌تواند پس از رفع
+   مشکل اتصال، فیش‌ها را دونه‌دونه (یا همه با هم) با کارت «ارسال مجدد» به سرور ارسال کند.
 6. در نهایت رسید روی پرینتر دستگاه POS چاپ می‌شود (`bitmapPrint` از طریق AIDL).
 
 ## ساختار پروژه
@@ -94,9 +99,13 @@ PendingIntent pi = service.StartTransaction(
 | `response_data` | JSON پاسخ سرور (HostResponse) با فیلدهای `sc`, `sm`, `am`, `aa`, `aad`, `rrn`, `hti` |
 | `masked_card` / `stan` / `transaction_date` / `is_payment_by_credit` | اطلاعات تکمیلی تراکنش |
 
-تراکنش تنها زمانی **موفق** است که هم `status_code` بیرونی صفر باشد و هم `sc` داخل
-`response_data` صفر باشد. در حالت `status_code == 9999` برنامه به‌صورت خودکار
-`getTransactionStatus(hti)` را برای استعلام نتیجه صدا می‌زند.
+تراکنش زمانی **موفق** است که `status_code` بیرونی صفر باشد (فرآیند روی دستگاه کامل شده)
+و `sc` داخل `response_data` هم صفر باشد — یا اصلاً گزارش نشده باشد. چون برخی دستگاه‌ها
+`response_data` نمی‌فرستند یا `sc` را به‌صورت عدد می‌فرستند، اگر فرآیند روی دستگاه کامل
+شده باشد و `sc` صریحاً غیر صفر نباشد، تراکنش موفق در نظر گرفته می‌شود تا پرداختِ واقعی
+برای اعلام به سرور از دست نرود. فقط `sc` غیر صفرِ صریح، تراکنش را ناموفق می‌کند.
+در حالت `status_code == 9999` برنامه به‌صورت خودکار `getTransactionStatus(hti)` را
+برای استعلام نتیجه صدا می‌زند.
 
 **چاپ رسید:** `bitmapPrint(lang, bitmap, printId, IPOSPrintStatusCallBack)` — این متد در
 `PosService.BitmapPrintNative` به‌صورت مستقیم روی Binder فراخوانی می‌شود، چون پارامتر

@@ -518,8 +518,10 @@ public class PosService : IDisposable
     /// <summary>
     /// تفسیر نتیجه برگشتی از Activity پرداخت POS.
     /// طبق مستندات، Intent دریافتی در onActivityResult تنها در صورتی معتبر است که
-    /// resultCode برابر Activity.RESULT_OK باشد؛ همچنین نتیجه نهایی وقتی «موفق» است که
-    /// هم status_code بیرونی صفر باشد و هم status_code داخل HostResponse (فیلد sc) صفر باشد.
+    /// resultCode برابر Activity.RESULT_OK باشد. تراکنش وقتی «موفق» است که فرآیند روی
+    /// دستگاه کامل شده باشد (status_code بیرونی صفر) و status_code داخل HostResponse
+    /// (فیلد sc) هم صفر باشد — یا اصلاً گزارش نشده باشد (برخی دستگاه‌ها response_data
+    /// نمی‌فرستند یا sc را به‌صورت عدد می‌فرستند). فقط sc غیر صفرِ صریح، تراکنش را ناموفق می‌کند.
     /// </summary>
     public static PosPaymentResult ParsePaymentResult(Intent? data, bool resultOk)
     {
@@ -546,8 +548,16 @@ public class PosService : IDisposable
         ReadHostResponse(result);
 
         result.Unknown = result.StatusCode == POSServiceResult.ResultCodes.TRANSACTION_UNKNOWN_RESULT;
+
+        // تراکنش وقتی «موفق» است که فرآیند روی دستگاه کامل شده باشد (status_code = 0 —
+        // مبلغ از کارت کم شده و دستگاه رسید چاپ کرده است).
+        // طبق مستندات، علاوه بر آن sc داخل HostResponse هم باید صفر باشد؛ اما در عمل ممکن است
+        // دستگاه response_data نفرستد یا sc را به‌صورت عدد/غیر استاندارد برگرداند. اگر sc صریحاً
+        // مقدار غیر صفر نداشته باشد، تراکنشِ تکمیل‌شده روی دستگاه نباید ناموفق اعلام شود؛
+        // وگرنه پرداختِ واقعی به سرور اعلام نمی‌شود و برای مشترک بستانکاری ثبت نمی‌شود.
         result.Success = result.StatusCode == POSServiceResult.ResultCodes.TRANSACTION_COMPLETED
-                         && result.HostStatusCode == "0";
+                         && (result.HostStatusCode == "0"
+                             || result.HostStatusCode.Length == 0);
 
         // در پرداخت از محل اعتبار پذیرنده، شماره کارت معتبر نیست
         if (result.PaidByCredit)
@@ -573,7 +583,7 @@ public class PosService : IDisposable
             if (root.ValueKind != System.Text.Json.JsonValueKind.Object)
                 return;
 
-            result.HostStatusCode = ReadJsonString(root, "sc") ?? string.Empty;
+            result.HostStatusCode = ReadJsonStringOrNumber(root, "sc") ?? string.Empty;
 
             var hostMessage = ReadJsonString(root, "sm");
             if (!string.IsNullOrWhiteSpace(hostMessage))
@@ -597,6 +607,26 @@ public class PosService : IDisposable
         root.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String
             ? value.GetString()
             : null;
+
+    /// <summary>
+    /// خواندن فیلدی که ممکن است در JSON به‌صورت رشته یا عدد آمده باشد
+    /// (مثلاً sc که برخی دستگاه‌ها به‌صورت عدد 0 می‌فرستند نه رشته‌ی "0").
+    /// خروجی با ارقام لاتین و بدون فاصله‌ی اضافی برمی‌گردد.
+    /// </summary>
+    private static string? ReadJsonStringOrNumber(System.Text.Json.JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var value))
+            return null;
+
+        return value.ValueKind switch
+        {
+            System.Text.Json.JsonValueKind.String =>
+                NormalizeDigits(value.GetString() ?? string.Empty).Trim(),
+            System.Text.Json.JsonValueKind.Number when value.TryGetInt64(out var number) =>
+                number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            _ => null
+        };
+    }
 
     private static long ReadJsonLong(System.Text.Json.JsonElement root, string name)
     {

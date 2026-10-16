@@ -38,4 +38,14 @@ public partial class MainPage : ContentPage
             await DisplayAlert("خطا", ex.Message, "باشه");
         }
     }
+
+    /// <summary>دکمه «📤 ارسال این فیش» داخل هر آیتم از لیست فیش‌های در انتظار ارسال</summary>
+    private void OnSendPendingClicked(object? sender, EventArgs e)
+    {
+        if (sender is not Button button || button.CommandParameter is not PendingBillConfirmation item)
+            return;
+
+        if (_vm.SendPendingConfirmationCommand.CanExecute(item))
+            _vm.SendPendingConfirmationCommand.Execute(item);
+    }
 }

@@ -328,6 +328,88 @@
                 </StackLayout>
             </Border>
 
+            <!-- کارت فیش‌های پرداخت‌شده‌ی در انتظار اعلام به سرور (ارسال مجدد) -->
+            <Border IsVisible="{Binding HasPendingConfirmations}" Style="{StaticResource Card}">
+                <StackLayout Spacing="8">
+                    <Label Text="🔁 فیش‌های در انتظار ارسال به سرور" Style="{StaticResource SectionTitle}" />
+
+                    <Label Text="{Binding PendingConfirmationsCountText}"
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
+
+                    <Label Text="این پرداخت‌ها روی دستگاه POS با موفقیت انجام شده‌اند اما به‌دلیل برقرار نشدن ارتباط، هنوز در سرور ثبت نشده‌اند. پس از رفع مشکل اتصال، آن‌ها را به سرور ارسال کنید."
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
+
+                    <CollectionView ItemsSource="{Binding PendingConfirmationsList}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate x:DataType="models:PendingBillConfirmation">
+                                <Border StrokeShape="RoundRectangle 10"
+                                        Stroke="{StaticResource FieldBorder}"
+                                        StrokeThickness="1"
+                                        Padding="12,10"
+                                        Margin="0,2,0,2">
+                                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="3">
+                                        <!-- صاحب قبض -->
+                                        <Label Grid.Row="0"
+                                               Text="{Binding OwnerName}"
+                                               FontAttributes="Bold"
+                                               FontSize="15"
+                                               LineBreakMode="TailTruncation" />
+
+                                        <!-- مبلغ -->
+                                        <Label Grid.Row="1"
+                                               Text="{Binding AmountRials, StringFormat='مبلغ: {0:N0} ریال'}"
+                                               FontSize="13"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource Danger}" />
+
+                                        <!-- شناسه قبض -->
+                                        <Label Grid.Row="2"
+                                               Text="{Binding BillId, StringFormat='شناسه قبض: {0}'}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- شناسه پرداخت -->
+                                        <Label Grid.Row="3"
+                                               Text="{Binding PayId, StringFormat='شناسه پرداخت: {0}'}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- تاریخ پرداخت (شمسی) -->
+                                        <Label Grid.Row="4"
+                                               Text="{Binding PaymentDate, StringFormat='تاریخ پرداخت: {0}'}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- شماره پیگیری -->
+                                        <Label Grid.Row="5"
+                                               Text="{Binding TrackingNo, StringFormat='شماره پیگیری: {0}'}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource TextSecondary}" />
+
+                                        <!-- ارسال دونه‌دونه‌ی همین فیش -->
+                                        <Button Grid.Row="6"
+                                                Text="📤 ارسال این فیش"
+                                                Clicked="OnSendPendingClicked"
+                                                CommandParameter="{Binding .}"
+                                                Style="{StaticResource OutlineButton}"
+                                                FontSize="12"
+                                                Margin="0,6,0,0" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <!-- ارسال مجدد همه‌ی فیش‌های در انتظار (دونه‌دونه) -->
+                    <Button Text="📤 ارسال مجدد همه به سرور"
+                            Command="{Binding ResendAllConfirmationsCommand}"
+                            Style="{StaticResource SuccessButton}"
+                            Margin="0,8,0,0" />
+                </StackLayout>
+            </Border>
+
             <!-- وضعیت -->
             <Border IsVisible="{Binding HasStatusMessage}"
                     BackgroundColor="{StaticResource PrimarySoft}"
