@@ -275,7 +275,7 @@
                                                FontSize="14" />
                                         <Label Text="{Binding ClassName}"
                                                FontSize="12"
-                                               LineBreakMode="TailTruncation"
+                                               LineBreakMode="WordWrap"
                                                TextColor="{StaticResource TextSecondary}" />
                                         <Label Text="{Binding Source, StringFormat='منبع: {0}'}"
                                                FontSize="11"
@@ -292,6 +292,49 @@
                             IsEnabled="{Binding IsNotBusy}"
                             IsVisible="{Binding HasDiscoveredServices}"
                             Margin="0,6,0,0" />
+                </StackLayout>
+            </Border>
+
+            <!-- کارت تنظیمات پیامک (SMS) -->
+            <Border Style="{StaticResource Card}">
+                <StackLayout Spacing="4">
+                    <Label Text="💬 تنظیمات پیامک (SMS)" Style="{StaticResource SectionTitle}" />
+
+                    <Label Text="نام کاربری پنل پیامک" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding SmsUserName, Mode=TwoWay}"
+                               Placeholder="مثلاً maraghe_76904" />
+                    </Border>
+
+                    <Label Text="رمز عبور پنل پیامک" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding SmsPassword, Mode=TwoWay}"
+                               IsPassword="True"
+                               Placeholder="رمز عبور پنل پیامک" />
+                    </Border>
+
+                    <Label Text="شماره سیستمی (شماره ارسال‌کننده)" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Entry Text="{Binding SmsSystemNumber, Mode=TwoWay}"
+                               Keyboard="Numeric"
+                               Placeholder="مثلاً 300076904" />
+                    </Border>
+
+                    <Label Text="متن پیامک (چند خطی — متن پیامی که برای کاربر ارسال می‌شود)" Style="{StaticResource FieldLabel}" />
+                    <Border Style="{StaticResource Field}">
+                        <Editor Text="{Binding SmsMessageText, Mode=TwoWay}"
+                                AutoSize="TextChanges"
+                                MinimumHeightRequest="110"
+                                Keyboard="Chat"
+                                Placeholder="متن پیامک که برای کاربر ارسال می‌شود" />
+                    </Border>
+                    <Label Text="عبارت‌های داخل آکولاد — {BillId} (شناسه قبض)، {PayId} (شناسه پرداخت) و {TrackingNo} (شماره پیگیری) — موقع ارسال با مقادیر واقعی جایگزین می‌شوند؛ Enter برای خط جدید."
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
+
+                    <Label Text="این تنظیمات برای ارسال پیامک به کاربر استفاده می‌شود. با دکمه «ذخیره تنظیمات» ذخیره می‌شوند."
+                           FontSize="12"
+                           TextColor="{StaticResource TextSecondary}" />
                 </StackLayout>
             </Border>
 

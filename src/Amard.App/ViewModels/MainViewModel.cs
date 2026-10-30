@@ -75,6 +75,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     /// <summary>صف فیش‌های پرداخت‌شده که نتیجه آن‌ها هنوز به سرور اعلام نشده (ذخیره در حافظه دستگاه)</summary>
     private readonly PendingConfirmationStore _pendingStore;
 
+    /// <summary>سرویس ارسال پیامک اطلاع‌رسانی پرداخت به موبایل مالک (وب‌سرویس مگفا)</summary>
+    private readonly SmsService _sms;
+
+    /// <summary>مالکی که قبضِ در جریان پرداخت به او تعلق دارد (موبایل او برای ارسال پیامک)</summary>
+    private Owners? _pendingPaymentOwner;
+
     public bool HasOwners => OwnersList.Count > 0;
     public bool HasParvandehs => ParvandehList.Count > 0;
     public bool HasSelectedOwner => SelectedOwner is not null;
@@ -104,6 +110,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         // خوانده می‌شود تا تغییر تنظیمات بلافاصله اعمال شود.
         _api = new BillApiService(ApiHttpClientFactory.Create(TimeSpan.FromSeconds(30)));
         _pos = new PosService();
+        _sms = new SmsService();
         _pendingStore = new PendingConfirmationStore();
         _pendingStore.Changed += RefreshPendingConfirmations;
 
@@ -331,6 +338,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(HasSelectedBill));
         OnPropertyChanged(nameof(AmountText));
         PayCommand.NotifyCanExecuteChanged();
+        SendSmsCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>
@@ -374,12 +382,58 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     private bool CanGetBill() => !IsBusy && SelectedOwner is not null;
 
+    /// <summary>
+    /// دکمه «📱 ارسال پیامک به مالک»: ارسال متن پیامکِ تنظیمات به موبایل مالک
+    /// (فیلد mob مالک انتخاب‌شده) برای قبض انتخاب‌شده — بدون نیاز به پرداخت.
+    /// شناسه قبض و شناسه پرداخت داخل متن جایگزین می‌شوند.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanSendSms))]
+    private async Task SendSmsAsync()
+    {
+        var bill = SelectedBill;
+        if (bill is null)
+        {
+            StatusMessage = "اول یک قبض را از لیست انتخاب کنید.";
+            return;
+        }
+
+        var owner = SelectedOwner;
+        if (string.IsNullOrWhiteSpace(owner?.mob))
+        {
+            StatusMessage = "برای مالک انتخاب‌شده شماره موبایل ثبت نشده است؛ پیامکی ارسال نشد.";
+            return;
+        }
+
+        IsBusy = true;
+        StatusMessage = $"در حال ارسال پیامک به شماره {owner!.mob} ...";
+
+        try
+        {
+            var result = await _sms.SendAsync(owner.mob, bill.BillId, bill.PayId);
+
+            StatusMessage = result.Success
+                ? $"📱 پیامک برای قبض «{bill.BillId}» به شماره {owner.mob} ارسال شد ({result.Message})."
+                : $"⚠ ارسال پیامک به شماره {owner.mob} ناموفق بود: {result.Message}";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"⚠ خطا در ارسال پیامک: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private bool CanSendSms() => !IsBusy && SelectedBill is not null;
+
     /// <summary>دکمه پرداخت: ارسال مبلغِ فقطِ قبض انتخاب‌شده به دستگاه POS</summary>
     [RelayCommand(CanExecute = nameof(CanPay))]
     private async Task PayAsync()
     {
-        // قبض در جریان، قبل از شروع تراکنش ثابت می‌شود تا تغییر انتخاب، پرداخت را خراب نکند
+        // قبض و مالک در جریان، قبل از شروع تراکنش ثابت می‌شوند تا تغییر انتخاب، پرداخت را خراب نکند
         _pendingPaymentBill = SelectedBill!;
+        _pendingPaymentOwner = SelectedOwner;
 
         StatusMessage = $"در انتظار پرداخت مبلغ {_pendingPaymentBill.AmountRials:N0} ریال روی دستگاه POS ...";
         IsBusy = true;
@@ -589,6 +643,17 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     ? $"پرداخت تأیید شد اما چاپ ناموفق بود: {printEx.Message}"
                     : $"چاپ رسید ناموفق بود ({printEx.Message})؛ نتیجه پرداخت در حافظه ذخیره شد و در انتظار ارسال به سرور است.";
             }
+
+            // ارسال پیامک اطلاع‌رسانی به موبایل مالک (پنل مگفا + متن از تنظیمات) —
+            // خطای پیامک نباید پرداختِ موفق را خراب کند
+            try
+            {
+                await SendPaymentSmsAsync(paidBill, posResult);
+            }
+            catch (Exception smsEx)
+            {
+                StatusMessage += $"\n⚠ خطا در ارسال پیامک: {smsEx.Message}";
+            }
         }
         catch (Exception ex)
         {
@@ -598,6 +663,32 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             IsBusy = false;
         }
+    }
+
+    /// <summary>
+    /// ارسال پیامک اطلاع‌رسانی پرداخت به موبایل مالکِ قبض (فیلد mob مالک انتخاب‌شده).
+    /// نام کاربری، رمز عبور، شماره سیستمی و متن پیام از تنظیمات خوانده می‌شوند و
+    /// شناسه قبض/پرداخت/پیگیری داخل متن جایگزین می‌شوند. نتیجه به پیام وضعیت اضافه می‌شود.
+    /// </summary>
+    private async Task SendPaymentSmsAsync(BillInfo bill, PosPaymentResult posResult)
+    {
+        var mobile = _pendingPaymentOwner?.mob;
+
+        if (string.IsNullOrWhiteSpace(mobile))
+        {
+            StatusMessage += "\nℹ شماره موبایل مالک ثبت نشده است؛ پیامکی ارسال نشد.";
+            return;
+        }
+
+        var result = await _sms.SendAsync(
+            mobile,
+            bill.BillId,
+            bill.PayId,
+            BillApiService.GetTrackingNo(posResult));
+
+        StatusMessage += result.Success
+            ? $"\n📱 پیامک اطلاع‌رسانی به شماره {mobile} ارسال شد ({result.Message})."
+            : $"\n⚠ ارسال پیامک به شماره {mobile} ناموفق بود: {result.Message}";
     }
 
     public void Dispose()

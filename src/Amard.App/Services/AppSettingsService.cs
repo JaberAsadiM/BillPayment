@@ -145,6 +145,54 @@ public static class AppSettingsService
         set => Preferences.Set(Key(nameof(Lang)), value);
     }
 
+    // ----- تنظیمات پیامک (SMS) -----
+
+    /// <summary>نام کاربری پنل پیامک (برای ارسال پیام به کاربر)</summary>
+    public const string DefaultSmsUserName = "maraghe_76904";
+
+    /// <summary>رمز عبور پنل پیامک</summary>
+    public const string DefaultSmsPassword = "GYDKEzQonJKMEQgH";
+
+    /// <summary>شماره سیستمی پنل پیامک (شماره ارسال‌کننده، مثل 300076904)</summary>
+    public const string DefaultSmsSystemNumber = "300076904";
+
+    /// <summary>
+    /// متن پیش‌فرض پیامک ارسالی به کاربر. چند خطی؛
+    /// عبارت‌های داخل آکولاد ({BillId} و {PayId} و {TrackingNo}) موقع ارسال
+    /// با مقادیر واقعی قبض/پرداخت جایگزین می‌شوند.
+    /// </summary>
+    public const string DefaultSmsMessageText =
+        "شهروند گرامی حتمی برگه مفاصا پرداختی خود را از درامد منطقه دریافت نمایید. " +
+        "https://shahrvandyar.com/api/payment/Inquiry?PaymentId={PayId}&BillId={BillId}";
+
+    /// <summary>نام کاربری پنل پیامک</summary>
+    public static string SmsUserName
+    {
+        get => Preferences.Get(Key(nameof(SmsUserName)), DefaultSmsUserName);
+        set => Preferences.Set(Key(nameof(SmsUserName)), value);
+    }
+
+    /// <summary>رمز عبور پنل پیامک</summary>
+    public static string SmsPassword
+    {
+        get => Preferences.Get(Key(nameof(SmsPassword)), DefaultSmsPassword);
+        set => Preferences.Set(Key(nameof(SmsPassword)), value);
+    }
+
+    /// <summary>شماره سیستمی پنل پیامک (شماره ارسال‌کننده)</summary>
+    public static string SmsSystemNumber
+    {
+        get => Preferences.Get(Key(nameof(SmsSystemNumber)), DefaultSmsSystemNumber);
+        set => Preferences.Set(Key(nameof(SmsSystemNumber)), value);
+    }
+
+    /// <summary>متن پیامک ارسالی به کاربر (چند خطی؛ خطوط جدید حفظ می‌شوند)</summary>
+    public static string SmsMessageText
+    {
+        get => Preferences.Get(Key(nameof(SmsMessageText)), DefaultSmsMessageText);
+        set => Preferences.Set(Key(nameof(SmsMessageText)), value);
+    }
+
     // ----- تنظیمات به‌روزرسانی خودکار (GitHub Releases) -----
     public const string DefaultUpdateRepoOwner = "JaberAsadiM";
     public const string DefaultUpdateRepoName = "BillPayment";
@@ -194,6 +242,10 @@ public static class AppSettingsService
         HostId = DefaultHostId;
         HostApiKey = DefaultHostApiKey;
         Lang = DefaultLang;
+        SmsUserName = DefaultSmsUserName;
+        SmsPassword = DefaultSmsPassword;
+        SmsSystemNumber = DefaultSmsSystemNumber;
+        SmsMessageText = DefaultSmsMessageText;
         UpdateRepoOwner = DefaultUpdateRepoOwner;
         UpdateRepoName = DefaultUpdateRepoName;
         UpdateCheckOnStartup = DefaultUpdateCheckOnStartup;

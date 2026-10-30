@@ -220,6 +220,20 @@ public static class AppConstants
     /// <summary>زبان SDK دستگاه</summary>
     public static string Lang => AppSettingsService.Lang;
 
+    // ----- تنظیمات پیامک (SMS) -----
+
+    /// <summary>نام کاربری پنل پیامک (برای ارسال پیام به کاربر)</summary>
+    public static string SmsUserName => AppSettingsService.SmsUserName;
+
+    /// <summary>رمز عبور پنل پیامک</summary>
+    public static string SmsPassword => AppSettingsService.SmsPassword;
+
+    /// <summary>شماره سیستمی پنل پیامک (شماره ارسال‌کننده)</summary>
+    public static string SmsSystemNumber => AppSettingsService.SmsSystemNumber;
+
+    /// <summary>متن پیامک ارسالی به کاربر (چند خطی؛ عبارت‌های {کلید} با مقادیر تراکنش جایگزین می‌شوند)</summary>
+    public static string SmsMessageText => AppSettingsService.SmsMessageText;
+
     /// <summary>تشخیص اجرای برنامه روی شبیه‌ساز اندروید</summary>
     private static bool IsRunningOnEmulator()
     {

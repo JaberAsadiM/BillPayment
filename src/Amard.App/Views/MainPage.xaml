@@ -186,7 +186,7 @@
                                                Text="{Binding OwnerName, StringFormat='نام و نام خانوادگی: {0}'}"
                                                FontAttributes="Bold"
                                                FontSize="16"
-                                               LineBreakMode="TailTruncation" />
+                                               LineBreakMode="WordWrap" />
 
                                         <!-- کد ملی -->
                                         <Label Grid.Row="1" Grid.Column="0"
@@ -198,21 +198,23 @@
                                         <Label Grid.Row="1" Grid.Column="1"
                                                Text="{Binding id, StringFormat='ردیف: {0}'}"
                                                FontSize="13"
-                                               HorizontalTextAlignment="End"
+                                               LineBreakMode="WordWrap"
+                                               HorizontalOptions="End"
                                                TextColor="{StaticResource TextSecondary}" />
 
                                         <!-- نام پدر -->
                                         <Label Grid.Row="2" Grid.Column="0"
                                                Text="{Binding father, StringFormat='نام پدر: {0}'}"
                                                FontSize="13"
-                                               LineBreakMode="TailTruncation"
+                                               LineBreakMode="WordWrap"
                                                TextColor="{StaticResource TextSecondary}" />
 
                                         <!-- شماره موبایل مالک (mob) -->
                                         <Label Grid.Row="2" Grid.Column="1"
                                                Text="{Binding mob, StringFormat='موبایل: {0}'}"
                                                FontSize="13"
-                                               HorizontalTextAlignment="End"
+                                               LineBreakMode="WordWrap"
+                                               HorizontalOptions="End"
                                                TextColor="{StaticResource TextSecondary}" />
 
                                     </Grid>
@@ -267,38 +269,38 @@
                                         </VisualStateGroupList>
                                     </VisualStateManager.VisualStateGroups>
 
-                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="6" ColumnSpacing="10">
+                                    <!-- تک‌ستونه: هر داده در سطر جداگانه، راست‌چین و با شکست سطر (WordWrap) -->
+                                    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
                                         <!-- صاحب قبض -->
-                                        <Label Grid.Row="0" Grid.Column="0"
+                                        <Label Grid.Row="0"
                                                Text="{Binding OwnerName}"
                                                FontAttributes="Bold"
                                                FontSize="16"
-                                               LineBreakMode="TailTruncation" />
+                                               LineBreakMode="WordWrap" />
 
                                         <!-- دوره / سال قبض -->
-                                        <Label Grid.Row="0" Grid.Column="1"
+                                        <Label Grid.Row="1"
                                                Text="{Binding Period, StringFormat='دوره: {0}'}"
                                                FontSize="13"
-                                               HorizontalTextAlignment="End"
+                                               LineBreakMode="WordWrap"
                                                TextColor="{StaticResource TextSecondary}" />
 
-                                        <!-- شناسه قبض -->
-                                        <Label Grid.Row="1" Grid.Column="0"
+                                        <!-- شناسه قبض — سطر جدا برای خوانایی کامل -->
+                                        <Label Grid.Row="2"
                                                Text="{Binding BillId, StringFormat='شناسه قبض: {0}'}"
-                                               FontSize="13"
-                                               LineBreakMode="TailTruncation"
-                                               TextColor="{StaticResource TextSecondary}" />
+                                               FontSize="15" FontAttributes="Bold"
+                                               LineBreakMode="WordWrap"
+                                               TextColor="{StaticResource TextPrimary}" />
 
-                                        <!-- شناسه پرداخت -->
-                                        <Label Grid.Row="1" Grid.Column="1"
+                                        <!-- شناسه پرداخت — سطر جدا برای خوانایی کامل -->
+                                        <Label Grid.Row="3"
                                                Text="{Binding PayId, StringFormat='شناسه پرداخت: {0}'}"
-                                               FontSize="13"
-                                               HorizontalTextAlignment="End"
-                                               LineBreakMode="TailTruncation"
-                                               TextColor="{StaticResource TextSecondary}" />
+                                               FontSize="15" FontAttributes="Bold"
+                                               LineBreakMode="WordWrap"
+                                               TextColor="{StaticResource TextPrimary}" />
 
                                         <!-- مبلغ قبض در کادر برجسته -->
-                                        <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                        <Border Grid.Row="4"
                                                 BackgroundColor="{StaticResource DangerSoft}"
                                                 StrokeThickness="0"
                                                 StrokeShape="RoundRectangle 8"
@@ -306,6 +308,8 @@
                                                 Margin="0,6,0,0">
                                             <Label Text="{Binding AmountRials, StringFormat='مبلغ: {0:N0} ریال'}"
                                                    FontSize="17" FontAttributes="Bold"
+                                                   LineBreakMode="WordWrap"
+                                                   HorizontalTextAlignment="Center"
                                                    TextColor="{StaticResource Danger}" />
                                         </Border>
                                     </Grid>
@@ -325,6 +329,13 @@
                             IsVisible="{Binding HasSelectedBill}"
                             Style="{StaticResource SuccessButton}"
                             Margin="0,8,0,0" />
+
+                    <!-- ارسال پیامک اطلاع‌رسانی به مالک برای قبض انتخاب‌شده -->
+                    <Button Text="📱 ارسال پیامک به مالک"
+                            Command="{Binding SendSmsCommand}"
+                            IsVisible="{Binding HasSelectedBill}"
+                            Style="{StaticResource OutlineButton}"
+                            Margin="0,4,0,0" />
                 </StackLayout>
             </Border>
 
@@ -355,7 +366,7 @@
                                                Text="{Binding OwnerName}"
                                                FontAttributes="Bold"
                                                FontSize="15"
-                                               LineBreakMode="TailTruncation" />
+                                               LineBreakMode="WordWrap" />
 
                                         <!-- مبلغ -->
                                         <Label Grid.Row="1"

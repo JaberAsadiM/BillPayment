@@ -568,7 +568,7 @@ public class PosService : IDisposable
 
         return result;
     }
-
+    //item.smsMessage = MyFunctions.EncryptUrlsInText(item.smsMessage);
 
     /// <summary>خواندن فیلدهای مشترک HostResponse (JSON داخل response_data)</summary>
     private static void ReadHostResponse(PosPaymentResult result)
@@ -860,20 +860,31 @@ public class PosService : IDisposable
     private static Bitmap BuildReceiptBitmap(BillInfo bill, PosPaymentResult pos)
     {
         const int width = 384;
+        const float margin = 10f;
+
         var lines = BuildReceiptLines(bill, pos);
         var paint = new APaint { AntiAlias = true, Color = AColor.Black };
-        paint.TextSize = 22f;
+
+        // قبلاً 22f بود؛ برای خوانایی بهتر روی کاغذ رسید، فونت بزرگ‌تر شد
+        paint.TextSize = 30f;
         paint.SetTypeface(Typeface.DefaultBold);
 
-        var lineHeight = 32;
-        var height = (lines.Count + 1) * lineHeight + 40;
+        const int lineHeight = 44;
+
+        // سطرهای بلندتر از عرض کاغذ (مثل نام طولانی مالک یا مبلغ‌های بزرگ) به چند
+        // سطر شکسته می‌شوند تا هیچ اطلاعاتی از رسید حذف نشود
+        var wrapped = new List<(string Text, bool IsTitle, bool IsRtl)>();
+        foreach (var (text, isTitle, isRtl) in lines)
+            wrapped.AddRange(WrapReceiptLine(text, isTitle, isRtl, paint, width - margin * 2));
+
+        var height = (wrapped.Count + 1) * lineHeight + 48;
 
         var bitmap = Bitmap.CreateBitmap(width, height, Bitmap.Config.Argb8888!)!;
         using var canvas = new Canvas(bitmap);
         canvas.DrawColor(AColor.White);
 
-        float y = 40;
-        foreach (var (text, isTitle, isRtl) in lines)
+        float y = 48;
+        foreach (var (text, isTitle, isRtl) in wrapped)
         {
             if (isTitle)
             {
@@ -883,18 +894,73 @@ public class PosService : IDisposable
             else if (isRtl)
             {
                 paint.TextAlign = APaint.Align.Right;
-                canvas.DrawText(text, width - 10, y, paint);
+                canvas.DrawText(text, width - margin, y, paint);
             }
             else
             {
                 paint.TextAlign = APaint.Align.Left;
-                canvas.DrawText(text, 10, y, paint);
+                canvas.DrawText(text, margin, y, paint);
             }
 
             y += lineHeight;
         }
 
         return bitmap;
+    }
+
+    /// <summary>
+    /// شکستن یک سطر رسید به چند سطر که هرکدام در عرض مجاز کاغذ جا می‌شوند
+    /// (اول کلمه به کلمه؛ اگر تک‌کلمه هم بلندتر از عرض بود، حرف به حرف).
+    /// </summary>
+    private static IEnumerable<(string Text, bool IsTitle, bool IsRtl)> WrapReceiptLine(
+        string text, bool isTitle, bool isRtl, APaint paint, float maxWidth)
+    {
+        if (paint.MeasureText(text) <= maxWidth)
+        {
+            yield return (text, isTitle, isRtl);
+            yield break;
+        }
+
+        var current = string.Empty;
+        foreach (var word in text.Split(' '))
+        {
+            var candidate = current.Length == 0 ? word : current + " " + word;
+            if (paint.MeasureText(candidate) <= maxWidth)
+            {
+                current = candidate;
+                continue;
+            }
+
+            if (current.Length > 0)
+                yield return (current, isTitle, isRtl);
+
+            // خودِ کلمه از عرض بلندتر است → حرف به حرف شکسته می‌شود
+            if (paint.MeasureText(word) > maxWidth)
+            {
+                var part = string.Empty;
+                foreach (var ch in word)
+                {
+                    if (part.Length > 0 && paint.MeasureText(part + ch) > maxWidth)
+                    {
+                        yield return (part, isTitle, isRtl);
+                        part = ch.ToString();
+                    }
+                    else
+                    {
+                        part += ch;
+                    }
+                }
+
+                current = part;
+            }
+            else
+            {
+                current = word;
+            }
+        }
+
+        if (current.Length > 0)
+            yield return (current, isTitle, isRtl);
     }
 
     private static List<(string Text, bool IsTitle, bool IsRtl)> BuildReceiptLines(BillInfo bill, PosPaymentResult pos)

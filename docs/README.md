@@ -16,6 +16,13 @@
    (`Services/PendingConfirmationStore`) ذخیره می‌شود و کاربر می‌تواند پس از رفع
    مشکل اتصال، فیش‌ها را دونه‌دونه (یا همه با هم) با کارت «ارسال مجدد» به سرور ارسال کند.
 6. در نهایت رسید روی پرینتر دستگاه POS چاپ می‌شود (`bitmapPrint` از طریق AIDL).
+7. پس از پرداخت موفق و چاپ رسید، پیامک اطلاع‌رسانی به موبایل مالکِ انتخاب‌شده (فیلد `Owners.mob`)
+   از طریق وب‌سرویس مگفا ارسال می‌شود (`Services/SmsService.cs` —
+   `https://sms.magfa.com/api/http/sms/v1?service=enqueue&username=...&password=...&domain=magfa&from=...&to=...&text=...`).
+   مشخصات پنل و متن پیام از تنظیمات خوانده می‌شوند و `{BillId}` / `{PayId}` / `{TrackingNo}`
+   داخل متن با مقادیر واقعی تراکنش جایگزین می‌شوند.
+   همچنین در صفحه اصلی، با انتخاب یک قبض از لیست، دکمه «📱 ارسال پیامک به مالک» برای ارسال
+   دستی پیام (پیش از پرداخت) نمایش داده می‌شود.
 
 ## ساختار پروژه
 ```
@@ -27,6 +34,7 @@ src/Amard.App/
 ├── ViewModels/MainViewModel   منطق UI (CommunityToolkit.Mvvm)
 ├── Services/BillApiService    ارتباط با سرور
 ├── Services/PosService        اتصال، پرداخت، استعلام و چاپ
+├── Services/SmsService        ارسال پیامک مگفا به موبایل مالک
 ├── Services/UpdateService     به‌روزرسانی خودکار از GitHub Releases
 ├── Models/                    مدل‌ها
 └── AppConstants.cs            تنظیمات (آدرس سرور، پکیج POS، hostId، hostApiKey و ...)
@@ -48,6 +56,10 @@ src/Amard.App/
 4. **HostApiKey** — کلید API میزبان دریافتی از اسان‌پرداخت (در فیلد `hak` ارسال می‌شود).
 5. **کدهای تراکنش** — خرید `1502` و قبض خدماتی `1503`.
 6. **زبان SDK** — `fa` یا `en`.
+7. **پنل پیامک مگفا (SMS)** — نام کاربری، رمز عبور، شماره سیستمی و متن پیامک (چند خطی) برای ارسال
+   پیامک اطلاع‌رسانی به موبایل مالک (`Owners.mob`) از طریق وب‌سرویس مگفا؛ عبارت‌های `{BillId}`،
+   `{PayId}` و `{TrackingNo}` داخل متن با مقادیر واقعی تراکنش جایگزین می‌شوند
+   (`AppConstants.SmsUserName` / `SmsPassword` / `SmsSystemNumber` / `SmsMessageText`).
 
 ## پروتکل پرداخت اسان‌پرداخت (طبق مستندات «اتصال به پایانه‌های فروش اندرویدی» V1.0.0)
 

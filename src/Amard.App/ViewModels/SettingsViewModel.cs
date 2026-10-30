@@ -56,6 +56,24 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string lang = string.Empty;
 
+    // ----- تنظیمات پیامک (SMS) -----
+
+    /// <summary>نام کاربری پنل پیامک</summary>
+    [ObservableProperty]
+    private string smsUserName = string.Empty;
+
+    /// <summary>رمز عبور پنل پیامک</summary>
+    [ObservableProperty]
+    private string smsPassword = string.Empty;
+
+    /// <summary>شماره سیستمی پنل پیامک (شماره ارسال‌کننده)</summary>
+    [ObservableProperty]
+    private string smsSystemNumber = string.Empty;
+
+    /// <summary>متن پیامک ارسالی به کاربر (چند خطی)</summary>
+    [ObservableProperty]
+    private string smsMessageText = string.Empty;
+
     [ObservableProperty]
     private string statusMessage = string.Empty;
 
@@ -184,6 +202,10 @@ public partial class SettingsViewModel : ObservableObject
         HostId = AppSettingsService.HostId.ToString();
         HostApiKey = AppSettingsService.HostApiKey;
         Lang = AppSettingsService.Lang;
+        SmsUserName = AppSettingsService.SmsUserName;
+        SmsPassword = AppSettingsService.SmsPassword;
+        SmsSystemNumber = AppSettingsService.SmsSystemNumber;
+        SmsMessageText = AppSettingsService.SmsMessageText;
     }
 
     /// <summary>
@@ -236,6 +258,10 @@ public partial class SettingsViewModel : ObservableObject
             AppSettingsService.HostId = ParseNumber(HostId, emptyMeansDefault: false)!.Value;
             AppSettingsService.HostApiKey = HostApiKey.Trim();
             AppSettingsService.Lang = Lang.Trim();
+            AppSettingsService.SmsUserName = SmsUserName.Trim();
+            AppSettingsService.SmsPassword = SmsPassword.Trim();
+            AppSettingsService.SmsSystemNumber = SmsSystemNumber.Trim();
+            AppSettingsService.SmsMessageText = SmsMessageText.Trim();
 
             // فیلد پورت را با مقدار واقعیِ ذخیره‌شده همگام کن (خالی = پیش‌فرض)
             LoadFromSettings();
